@@ -15,13 +15,15 @@ from scipy.interpolate import CubicSpline
 from mpl_toolkits import mplot3d
 import math
 
-Patient = r"\BiKE_0846"
+Patient = r"\BiKE_0843"
 Dir = r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo"
 suffix_comp = r"\*\RightCarotid\Batch*__composition.multi.nrrd"
 suffix_Lumen = r"\*\RightCarotid\*lumenSegmentation.nrrd"
 suffix_Wall = r"\*\RightCarotid\*wallSegmentation.nrrd"
 suffix_Donut = r"\*\RightCarotid\CommonCarotidArtery/donut"
-readings_d = json.load(open(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\BatchProcessor_20221031181135482225__lesionReadings.json"))
+suffix_save = r"\*\RightCarotid/"
+suffix_Json = r"\*\RightCarotid\Batch*__lesionReadings.json"
+
 
 #filepath1 = glob.glob(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0830\*\RightCarotid\Batch*__composition.multi.nrrd')
 filepath1 = glob.glob(Dir + Patient + suffix_comp)
@@ -32,8 +34,11 @@ filepath2 = glob.glob(Dir + Patient + suffix_Lumen)
 
 filepath3 = glob.glob(Dir + Patient + suffix_Wall)
 #print(filepath3[0])
-
-
+filepath4 = glob.glob(Dir + Patient + suffix_save)
+print(filepath4)
+filepath5 = glob.glob(Dir + Patient + suffix_Json)
+print(filepath5)
+readings_d = json.load(open(filepath5[0]))
 CompositionData1, header2 = nrrd.read(filepath1[0])
 
 LumenData, header2 = nrrd.read(filepath2[0])
@@ -156,16 +161,28 @@ def Find_center(image):
 
 def unwrap_slice(slice):
     slice = np.array(slice)
+    #print(slice.shape)
     unwrapped_first_half = []
     unwrapped_second_half = []
+    slice = np.pad(slice,((30,30),(30,30)),mode ='constant', constant_values=0)
     center = np.where(slice == 7)
     x1 = center[0][0]
     y1 = center[1][0]
-    
+    #slice = np.pad(slice,((30,30),(30,30)),mode ='constant', constant_values=0)
+    #print(slice.shape)
+    #print(x1)
+    #print(y1)
+    slice = slice[x1-31:x1+31, y1-31:y1+31]
+    #print(slice.shape)
+    center = np.where(slice == 7)
+    x1 = center[0][0]
+    y1 = center[1][0]
+
+    #slice.shape[1]
     Radius = 1
     angle = 0
     while angle < 180:
-        
+        #print(angle)
         radians = angle*2*math.pi/360
         
         x2 = math.cos(radians)*Radius+x1
@@ -206,7 +223,7 @@ def unwrap_slice(slice):
         length = len(this_angle) 
         
         end = length-1
-        
+        #print(this_angle)
         half = this_angle.index(7.0)
         
         unwrapped_first_half.append(this_angle[0:half+1])
@@ -226,6 +243,7 @@ def scale_unwrap(first_half, second_half):
     for i in total_unwrap:
         length = len(i)
         a = i[-30:length]
+        #print(len(a))
         total_unwrap2.append(a)
 
     total_unwrap = np.array(total_unwrap2)
@@ -289,28 +307,34 @@ def vertical_slices(Center_line, labelVolume, H, L):
     return slice, volume_short
 
 
-cent = Find_center(labelVolume[:,:,0])
-C,d,d2,L,H = build_Center_Line(cent[0],cent[1])
+#cent = Find_center(labelVolume[:,:,0])
+#C,d,d2,L,H = build_Center_Line(cent[0],cent[1])
 
-Total = C + d2
-slice, label2 = vertical_slices(Total, labelVolume,H,L)
-
-print(slice.shape)
+#Total = C + d2
+#slice, label2 = vertical_slices(Total, labelVolume,H,L)
+#label2 = LumenData[:,:,L:H]
+#print(slice.shape)
+#np.save(filepath4[0] + r"Slices.txt.npy", slice)
+#slice = np.load(filepath4[0] + r"Slices.txt.npy")
+#np.save(filepath4[0] + r"Plaque_volume.txt", label2)
+slice = np.load(filepath4[0] + r"Slices.txt.npy")
 Unwrap_list = np.zeros([360,30, slice.shape[2]])
+
 for i in range(slice.shape[2]):
+    print(i)
     first_half,second_half = unwrap_slice(slice[:,:,i])
     total_unwrap = scale_unwrap(first_half, second_half)
     Unwrap_list[:,:,i] = total_unwrap
 
-
-
-
-
+np.save(filepath4[0] +r"Unwraps.txt.npy", Unwrap_list)
+#unwraps = np.load(filepath4[0] +r"Unwraps.txt.npy")
+#slice = np.load(filepath4[0] + r"Slices.txt.npy")
+#print(slice.shape)
 with napari.gui_qt():
     viewer = napari.Viewer()
     #viewer.add_image(total_unwrap)
     viewer.add_image(slice)
     #viewer.add_image(labelVolume)
-    viewer.add_image(label2)
+    #viewer.add_image(unwraps)
     viewer.add_image(Unwrap_list)
 napari.run()
