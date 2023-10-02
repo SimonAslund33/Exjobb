@@ -2,7 +2,7 @@ import numpy as np
 import napari
 import nrrd
 #import os
-#import cv2
+import cv2
 import glob
 import json
 #import pyvista as pv
@@ -101,15 +101,15 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
 
     distal = root['distal_segments']    
 
-    distal_list = []
-    Center_list = []
-    distal_list2 = []
+    #distal_list = []
+    #Center_list = []
+    #distal_list2 = []
     test_common = []
     test_internal = []
     C_firstz = root['cross_sections'][0]['position'][2]
     C_firsty =  root['cross_sections'][0]['position'][1]
     C_firstx =  root['cross_sections'][0]['position'][0]
-    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][0]['borders'][2]['position']]
+    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][1]['borders'][1]['position']]
     
     Lower_end = borders[0][2]+(-1)*C_firstz
     Hihger_end = borders[1][2]+(-1)*C_firstz
@@ -129,45 +129,7 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
         c3 = section['position'][0]
         c4 = [c3,c2,c]
         test_internal.append(c4)
-    """
-    for section in root['cross_sections']:
-        a = section['position'][2]+(-1)*C_firstz
-        a2 = section['position'][1]+(-1)*C_firsty
-        a3 = section['position'][0]+(-1)*C_firstx
-        a4 = [a3,a2,a]
-        Center_list.append(a4)
-        a = section['position'][2]
-        a2 = section['position'][1]
-        a3 = section['position'][0]
-        a4 = [a3,a2,a]
-        test.append(a4)
-    
-    for section in distal[0]['cross_sections']:
-       
-        b = section['position'][2]+(-1)*C_firstz
-        b2 = section['position'][1]+(-1)*C_firsty
-        b3 = section['position'][0]+(-1)*C_firstx
-        b4 = [b3,b2,b]
-        distal_list.append(b4)
-        #b = section['position'][2]
-        #b2 = section['position'][1]
-        #b3 = section['position'][0]
-        #b4 = [b3,b2,b]
-        #test.append(b4)
-
-    for section in distal[1]['cross_sections']:
-        c = section['position'][2]+(-1)*C_firstz
-        c2 = section['position'][1]+(-1)*C_firsty
-        c3 = section['position'][0]+(-1)*C_firstx
-        c4 = [c3,c2,c]
-        distal_list2.append(c4)
-        c = section['position'][2]
-        c2 = section['position'][1]
-        c3 = section['position'][0]
-        c4 = [c3,c2,c]
-        test.append(c4)
-    """
-    #print(Center_list)
+   
     
     #print(distal_list2)
     firstzC = root['cross_sections'][0]['position'][2]
@@ -184,132 +146,62 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     firstxI = distal[1]['cross_sections'][0]['position'][0]
     lastxI = distal[1]['cross_sections'][-1]['position'][0]
     #lastx = distal[0]['cross_sections'][-1]['position'][0]
-    
-    #print(lastx)
-    #lastx = readings_d['initialization_points']['distal_segments'][1]['cross_sections'][-1]['position'][0]
-    #lastx = readings_d['initialization_points']['distal_segments'][0]['cross_sections'][-1]['position'][0]
-    #lastx = distal[1]['cross_sections'][-1]['position'][0]
-    #print(firstz-lastz)
-    #print(firsty-lasty)
-    #print(firstx-lastx)
-    #print(lastz)
-    #print(lasty)
-    #print(lastx)
-    for i in test_common:
+    test_tot = test_common + test_internal
+   
+    for i in test_tot:
         i[0] = i[0]-firstxC
         i[1] = i[1]-firstyC
         i[2] = i[2]-firstzC
 
-    for i in test_internal:
-        i[0] = i[0]-firstxI
-        i[1] = i[1]-firstyI
-        i[2] = i[2]-firstzI
+    
     #print(test_internal)
-    hej = abs(firstzC - lastzC)
+    lengthZ = abs(firstzC - lastzI)
     #print(abs(firstxC-lastzI)/hej)
-    hej2 = abs(firstyC-lastyC)
-    hej3 = abs(firstxC-lastxC)
+    lengthY = abs(firstyC-lastyI)
+    lengthX = abs(firstxC-lastxI)
 
-    haha = (labelVolume.shape[2]-1)/(abs(firstzC-lastzI))
-    print(haha)
-    hehe = round(abs(firstzC-lastzC)*haha)
-    print(hehe)
-    hoho = round(abs(firstzC-firstzI)*haha)
+    #haha = (labelVolume.shape[2]-1)/(abs(firstzC-lastzI))
+    #print(haha)
+    #hehe = round(abs(firstzC-lastzC)*haha)
+    #print(hehe)
+    #hoho = round(abs(firstzC-firstzI)*haha)
     #print(hej,hej2,hej3)
     #print(x,y,x2,y2)
-    print(hoho)
-    middle_center = Find_center(labelVolume[:,:,hoho])
-    print(middle_center)
+    #print(hoho)
+    #middle_center = Find_center(labelVolume[:,:,hoho])
+    #print(middle_center)
     #converterz = (labelVolume.shape[2]-1)/hej
-    converterz = (hehe/hej)
-    convertery = (abs(y-middle_center[1])/hej2)
-    converterx = (abs(x-middle_center[0])/hej3)
-    print(converterx)
-    print(convertery)
-    print(converterz)
+    converterz = ((labelVolume.shape[2]-1)/lengthZ)
+    convertery = (abs(y-y2)/lengthY)
+    converterx = (abs(x-x2)/lengthX)
+    #print(converterx)
+    #print(convertery)
+    #print(converterz)
 
-    hej4 = abs(firstzI-lastzI)
-    hej5 = abs(firstyI-lastyI)
-    hej6 = abs(firstxI-lastxI)
+    #hej4 = abs(firstzI-lastzI)
+    #hej5 = abs(firstyI-lastyI)
+    #hej6 = abs(firstxI-lastxI)
 
-    converterz2 = ((labelVolume.shape[2]-hehe-1)/hej4)
-    convertery2 = (abs(middle_center[1]-y2)/hej5)
-    converterx2 = (abs(middle_center[0]-x2)/hej6)
-    #print(hej4)
-    #print(hej5)
-    #print(hej6)
-    #print(converterz2)
-    #print(convertery2)
-    #print(converterx2)
-    #print(Center_list[55:70])
+    #converterz2 = ((labelVolume.shape[2]-hehe-1)/hej4)
+    #convertery2 = (abs(middle_center[1]-y2)/hej5)
+    #converterx2 = (abs(middle_center[0]-x2)/hej6)
+    
     Hihger_end = round(Hihger_end*converterz)
     Lower_end = round(Lower_end*converterz)
-    test = [[i[0]*converterx2+x,i[1]*convertery+y,i[2]*converterz] for i in test_common]
+    test = [[i[0]*converterx+x,i[1]*convertery+y,i[2]*converterz] for i in test_tot]
     test = [[round(i[0]),round(i[1]),round(i[2])] for i in test]
-    print(test)
+    #print(test)
     #xt = []
-    test2 = [[i[0]*converterx2+middle_center[0],i[1]*convertery2+middle_center[1],i[2]*converterz2+hoho-2] for i in test_internal]
-    test2 = [[round(i[0]),round(i[1]),round(i[2])] for i in test2]
+    #test2 = [[i[0]*converterx2+middle_center[0],i[1]*convertery2+middle_center[1],i[2]*converterz2+hoho-2] for i in test_internal]
+    #test2 = [[round(i[0]),round(i[1]),round(i[2])] for i in test2]
     #yt = []
     #zt = []
-    print(test2)
-    #for i in test:
-       # yt.append(i[1])
-       # xt.append(i[0])
-       # zt.append(i[2])
-    test = test + test2
-    #print(max(x),min(x))
-    #for i in Center_list:
-    #    ylist.append(i[1])
-    #    xlist.append(i[0])
-    #    zlist.append(i[2])
-    #heja = max(np.where(labelVolume == 6)[0])- min(np.where(labelVolume == 6)[0])
-    #hoja = max(np.where(labelVolume == 6)[1])- min(np.where(labelVolume == 6)[1])
-    #haja = max(np.where(labelVolume == 6)[2])- min(np.where(labelVolume == 6)[2])
-    #converterx = (max(xt)-min(xt))/(heja-10)
-    #convertery = (max(yt)-min(yt))/(hoja-10)
-    #Center_list = [[round(j/converterz) for j in i] for i in Center_list]
-    #Center_list = [[i[0]+x,i[1]+y,i[2]] for i in Center_list]
-    for i in Center_list:
-        i[0] = round(i[0]/converterx)
-        i[1] = round(i[1]/convertery)
-        i[2] = round(i[2]/converterz)
-    #print(Center_list)
-    Center_list = [[i[0]+x,i[1]+y,i[2]] for i in Center_list]
-    #test = [[round(i[0]+x)*4,round(i[1]+y)*4,round(i[2])*4] for i in test]
-    #print
-    #print(Center_list[55:70])
-    #for i in Center_list:
-    #    ylist2.append(i[1])
-    #    xlist2.append(i[0])
-    #    zlist2.append(i[2])
-    #print(min(ylist),max(ylist))
-    #print(min(ylist2),max(ylist2))
-    #print(min(xlist),max(xlist))
-    #print(min(xlist2),max(xlist2))
-    #print(min(zlist),max(zlist))
-    #print(min(zlist2),max(zlist2))
-    #print(min(xt) , max(xt), max(xt)-min(xt))
-    #print(min(yt),max(yt), max(yt)-min(yt))
-    #print(min(zt),max(zt),max(zt)-min(zt))
-    for i in distal_list2:
-        i[0] = round(i[0]/converterx)
-        i[1] = round(i[1]/convertery)
-        i[2] = round(i[2]/converterz)
-    #print(distal_list2)
-    distal_list2 = [[i[0]+x,i[1]+y,i[2]] for i in distal_list2]
-    for i in distal_list:
-        i[0] = round(i[0]/converterx)
-        i[1] = round(i[1]/convertery)
-        i[2] = round(i[2]/converterz)
-    distal_list = [[i[0]+x,i[1]+y,i[2]] for i in distal_list]
-    #distal_list = [[round(j/converterz) for j in i] for i in distal_list]
-    #distal_list = [[i[0]+x,i[1]+y,i[2]] for i in distal_list]
-    #distal_list2 = [[round(j/converterz) for j in i] for i in distal_list2]
-    #print(distal_list2)
-    #distal_list2 = [[i[0]+x,i[1]+y,i[2]] for i in distal_list2]
+    #print(test2)
+    
+    
+   
 
-    return Center_list ,distal_list,distal_list2,Lower_end,Hihger_end,test
+    return Lower_end,Hihger_end,test
 
 
 
@@ -413,8 +305,8 @@ def scale_unwrap(first_half, second_half):
     return total_unwrap
 
 def vertical_slices(Center_line, labelVolume, H, L):
-    for i in Center_line:
-        labelVolume[i[0],i[1],i[2]] = 7
+    #for i in Center_line:
+    #    labelVolume[i[0],i[1],i[2]] = 7
 
     volume_short = labelVolume[:,:,L:H]
     volume_short = np.array(volume_short)
@@ -468,8 +360,32 @@ def vertical_slices(Center_line, labelVolume, H, L):
                 
                         
     return slice, volume_short, labelVolume
+
+def new_center(image, CL):
+    #centers = []
+    for j in range(image.shape[2]):
+        thresh = cv2.inRange(image[:,:,j], 6, 6)
+
+        contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
+        #CL = np.where(image[:,:,j] == 7)
+        #print(contours)
+        distance = 1000
+        for i in contours:
+            point = (sum(i)/len(i))
+            #print(point)
+            point = [round(k) for k in point[0]]
+            dist = np.sqrt( (point[1] - CL[j][0])**2 + (point[0] - CL[j][1])**2 )
+            #print(dist)
+            if dist < distance:
+                distance = dist
+                closest_point = point
+            
+        image[closest_point[1],closest_point[0],j] = 7
+        
+    return image
+
 def main():
-    f1,f2,f3,f4,f5 = create_file_paths("BiKE_0850")
+    f1,f2,f3,f4,f5 = create_file_paths("BiKE_0846")
     labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
     cent = Find_center(labelVolume[:,:,0])
     end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
@@ -477,20 +393,20 @@ def main():
     #print(middle_center)
     print(end_center)
     print(cent)
-    C,d,d2,L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
+    L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
 
-    Total = C + d2 + d
+    #Total = C + d2 + d
     
-    #slice, label2, labelVolume2 = vertical_slices(Total, labelVolume,H,L)
-    """
-    label2 = LumenData[:,:,L:H]
+    slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
+    
+    #label2 = LumenData[:,:,L:H]
     #print(slice.shape)
     np.save(f4[0] + r"Slices.txt.npy", slice)
-#slice = np.load(filepath4[0] + r"Slices.txt.npy")
+    
     np.save(f4[0] + r"Plaque_volume.txt", label2)
     slice = np.load(f4[0] + r"Slices.txt.npy")
     Unwrap_list = np.zeros([360,30, slice.shape[2]])
-
+    slice = new_center(slice,test)
     for i in range(slice.shape[2]):
         print(i)
         first_half,second_half = unwrap_slice(slice[:,:,i])
@@ -499,10 +415,10 @@ def main():
 
     np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
     unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
-    slice = np.load(f4[0] + r"Slices.txt.npy")
+    #slice = np.load(f4[0] + r"Slices.txt.npy")
 #print(slice.shape)
 
-    """
+    
     """
     from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
@@ -529,10 +445,10 @@ def main():
     with napari.gui_qt():
         viewer = napari.Viewer()
     #viewer.add_image(total_unwrap)
-        #viewer.add_image(slice)
+        viewer.add_image(label2)
+        viewer.add_image(slice)
         viewer.add_image(labelVolume)
-    #viewer.add_image(unwraps)
-        #viewer.add_image(unwraps)
+        viewer.add_image(unwraps)
     napari.run()
 
     
