@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import cv2
+import cc3d
 
 slice = np.load(r'E:\BiKE_0846\wi-266BCEEA\RightCarotid\Slices.txt.npy')
 unwraps = np.load(r"E:\BiKE_0846\wi-266BCEEA\RightCarotid\Unwraps.txt.npy")
@@ -13,6 +14,20 @@ plaque_volume = np.load(r"E:\BiKE_0846\wi-266BCEEA\RightCarotid\Plaque_volume.tx
 
 xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
+def number_of_calcifications(volume):
+
+    #labels_out = cc3d.connected_components(volume)
+    labels_out, N = cc3d.connected_components(volume, return_N=True)
+    stats = cc3d.statistics(labels_out)
+    return labels_out,stats,N
+
+def only_calcifications(volume):
+    empty = np.zeros_like(volume)
+    Calc_idx = np.where(volume == 1)
+    for i in range(len(Calc_idx[0])):
+        empty[Calc_idx[0][i],Calc_idx[1][i],Calc_idx[2][i] ] = 1
+
+    return empty
 
 def Arc_calculations(unwrap):
     angles_tot = []
@@ -112,15 +127,19 @@ def Calc_mean_arc(arc_list):
 arcs = Arc_calculations(unwraps)
 max_arc = Calc_maximum_arc(arcs)
 mean_arc = Calc_mean_arc(arcs)
-print(arcs)
-print(max_arc)
-print(mean_arc)
-  
+calc_volume = only_calcifications(plaque_volume)
+labels_out,stats,N_of_calc = number_of_calcifications(calc_volume)
+largest_calcification = max(stats['voxel_counts'][1:])
+mean_size_calcification = sum(stats['voxel_counts'][1:])/N_of_calc
+print(N_of_calc)
+print(largest_calcification)
+print(mean_size_calcification)
 with napari.gui_qt():
     viewer = napari.Viewer()
 #    viewer.add_image(plaque_volume)
 #    viewer.add_image(slice)
     #viewer.add_image(labelVolume)
-    viewer.add_image(unwraps)
-    #viewer.add_image(cent)
+    #viewer.add_image(unwraps)
+   # viewer.add_image(calc_volume)
+    viewer.add_image(labels_out)
 napari.run()
