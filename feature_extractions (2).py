@@ -15,16 +15,39 @@ xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
 
 def Arc_calculations(unwrap):
+    angles_tot = []
+    #print(angles_tot)
+    for j in range(unwrap.shape[2]):
     #print(unwrap.shape)
-    calc_pixels = np.where(unwrap == 1)
+        calc_pixels = np.where(unwrap[:,:,j] == 1)
     #print(calc_pixels)
-    unique_angles = np.unique(calc_pixels[0])
-    print(unique_angles)
-    idx = 0
-    while unique_angles[idx] == unique_angles[idx+1] - 1:
-        idx += 1
-    return 0
+        unique_angles = np.unique(calc_pixels[0])
+        #print(unique_angles)
+        angles = []
+    #idx = 1
+        start_idx = 1
+        for i in range(1,len(unique_angles)): 
+            #print(unique_angles)
+            if unique_angles[i] == 359 and unique_angles[0] == 0:
+                #print("end")
+                
+                start_idx = start_idx-angles[0]
+                angles.remove(angles[0])
+                break
+            elif unique_angles[i] == unique_angles[i-1] + 1:
+                continue
+         
+            else: 
+                #print(i)   
+                angles.append((i+1) - start_idx)
+                start_idx = i+1
+            #print(start_idx)
+    
+        angles.append(len(unique_angles)+1 - start_idx)
+        angles_tot.append(angles)
 
+    
+    return angles_tot
 
 PatientID = []
 CalcVols = []
@@ -74,9 +97,25 @@ def calcvol():
     ax.set_ylabel( "count")
     plt.show()
 
+def Calc_maximum_arc(arc_list):
+    return max(arc_list)  
+def Calc_mean_arc(arc_list):
+    tot_mean = []
+    for i in arc_list:
+        mean = sum(i)/len(i)
+        if mean > 0:
+            tot_mean.append(mean)
     
-Arc_calculations(unwraps[:,:,20])
+    return (sum(tot_mean)/len(tot_mean))
+
     
+arcs = Arc_calculations(unwraps)
+max_arc = Calc_maximum_arc(arcs)
+mean_arc = Calc_mean_arc(arcs)
+print(arcs)
+print(max_arc)
+print(mean_arc)
+  
 with napari.gui_qt():
     viewer = napari.Viewer()
 #    viewer.add_image(plaque_volume)
