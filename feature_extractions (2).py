@@ -6,14 +6,20 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import cv2
 import cc3d
+from radiomics import base, cShape, deprecated, featureextractor
+import SimpleITK as sitk
+import six
+import os
 
-slice = np.load(r'E:\BiKE_0846\wi-266BCEEA\RightCarotid\Slices.txt.npy')
-unwraps = np.load(r"E:\BiKE_0846\wi-266BCEEA\RightCarotid\Unwraps.txt.npy")
-plaque_volume = np.load(r"E:\BiKE_0846\wi-266BCEEA\RightCarotid\Plaque_volume.txt.npy")
+slice = np.load(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Slices.txt.npy')
+unwraps = np.load(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Unwraps.txt.npy")
+plaque_volume = np.load(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Plaque_volume.txt.npy")
 
 
 xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
+
+
 def number_of_calcifications(volume):
 
     #labels_out = cc3d.connected_components(volume)
@@ -123,6 +129,29 @@ def Calc_mean_arc(arc_list):
     
     return (sum(tot_mean)/len(tot_mean))
 
+def Calc_Area_calculations(Calc_volume):
+    hej = sitk.GetImageFromArray(calc_volume)
+    extractor= featureextractor.RadiomicsFeatureExtractor()
+    result = extractor.execute(hej,hej)
+    #print(type(result))
+    features = []
+    for key,value in result.items():
+    #print ("\t",key,":",value)
+        if key == "original_shape_Elongation":
+            features.append(value)
+        elif key == "original_shape_Flatness":
+            features.append(value)
+        elif key == "original_shape_Sphericity":
+            features.append(value)
+        elif key == "original_shape_SurfaceArea":
+            features.append(value)
+        elif key == "original_shape_SurfaceVolumeRatio":
+            features.append(value)
+        elif key == "original_shape_VoxelVolume":
+            features.append(value)
+        else:
+            continue
+    return features[0],features[1],features[2],features[3],features[4],features[5]
     
 arcs = Arc_calculations(unwraps)
 max_arc = Calc_maximum_arc(arcs)
@@ -131,9 +160,15 @@ calc_volume = only_calcifications(plaque_volume)
 labels_out,stats,N_of_calc = number_of_calcifications(calc_volume)
 largest_calcification = max(stats['voxel_counts'][1:])
 mean_size_calcification = sum(stats['voxel_counts'][1:])/N_of_calc
-print(N_of_calc)
-print(largest_calcification)
-print(mean_size_calcification)
+Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,TotalCalcVolume = Calc_Area_calculations(labels_out)
+print(Calc_Area_calculations(labels_out))
+#print(Area_calc)
+#print(N_of_calc)
+#print(largest_calcification)
+#print(mean_size_calcification)
+
+    #print(key == "original_shape_Flatness")
+"""
 with napari.gui_qt():
     viewer = napari.Viewer()
 #    viewer.add_image(plaque_volume)
@@ -143,3 +178,4 @@ with napari.gui_qt():
    # viewer.add_image(calc_volume)
     viewer.add_image(labels_out)
 napari.run()
+"""
