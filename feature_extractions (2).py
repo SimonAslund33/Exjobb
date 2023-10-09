@@ -152,7 +152,26 @@ def Calc_Area_calculations(Calc_volume):
         else:
             continue
     return features[0],features[1],features[2],features[3],features[4],features[5]
-    
+
+def Calc_Lumen_Distance(unwraps):
+    mean_tot = []
+    for j in range(unwraps.shape[2]):
+        calc_pixels = np.where(unwraps[:,:,j] == 1)
+        if calc_pixels[0].size > 0:
+           
+            unique_angles = np.unique(calc_pixels[0])
+            distances = []
+            for i in unique_angles:
+                C = max(np.where(unwraps[i,:] == 1)[0])
+                L = max(np.where(unwraps[i,:] == 5)[0])
+                distances.append(L-C)
+            mean = sum(distances)/len(distances)
+            mean_tot.append(mean)
+    print(mean_tot)
+    mean_tot = sum(mean_tot)/len(mean_tot)
+    return mean_tot
+
+
 arcs = Arc_calculations(unwraps)
 max_arc = Calc_maximum_arc(arcs)
 mean_arc = Calc_mean_arc(arcs)
@@ -161,21 +180,24 @@ labels_out,stats,N_of_calc = number_of_calcifications(calc_volume)
 largest_calcification = max(stats['voxel_counts'][1:])
 mean_size_calcification = sum(stats['voxel_counts'][1:])/N_of_calc
 Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,TotalCalcVolume = Calc_Area_calculations(labels_out)
-print(Calc_Area_calculations(labels_out))
+
+mean_CalcLumenDistance = Calc_Lumen_Distance(unwraps)
+print("Mean Calcification Distance to Lumen:", mean_CalcLumenDistance)
+print("Maximum Calcium Arc:", max_arc)
 #print(Area_calc)
 #print(N_of_calc)
 #print(largest_calcification)
 #print(mean_size_calcification)
 
     #print(key == "original_shape_Flatness")
-"""
+
 with napari.gui_qt():
     viewer = napari.Viewer()
 #    viewer.add_image(plaque_volume)
 #    viewer.add_image(slice)
     #viewer.add_image(labelVolume)
-    #viewer.add_image(unwraps)
+    viewer.add_image(unwraps)
    # viewer.add_image(calc_volume)
     viewer.add_image(labels_out)
 napari.run()
-"""
+
