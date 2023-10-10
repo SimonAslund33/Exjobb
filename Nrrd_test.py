@@ -1,10 +1,11 @@
 import numpy as np
 import napari
 import nrrd
-#import os
+import os
 import cv2
 import glob
 import json
+from numba import jit, cuda
 #import pyvista as pv
 from skspatial.objects import Line, Points
 #from skspatial.plotting import plot_3d
@@ -13,36 +14,54 @@ from matplotlib import pyplot as plt
 #from scipy.interpolate import Rbf
 #from scipy.interpolate import CubicSpline
 #from mpl_toolkits import mplot3d
+import pandas as pd
 import math
 #"E:\BiKE_0830"
+#E:\wilist_BiKE_Group001_EJ\BiKE_0568\wi-F3F85BCF\LeftCarotid\BatchProcessor_20220925194821253636__lesionReadings.json
+xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
+df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
 def create_file_paths(Patient):
-    Patient = r"/" + Patient
-    Dir = r"E:/"
-    suffix_comp = r"\*\RightCarotid\Batch*__composition.multi.nrrd"
-    suffix_Lumen = r"\*\RightCarotid\*lumenSegmentation.nrrd"
-    suffix_Wall = r"\*\RightCarotid\*wallSegmentation.nrrd"
+    print(Patient)
+    Patient = str(Patient)
+    #list = np.unique(df1.iloc[:,1])
+    #print(list)
+    for i in range(len(df1)):
+        #print(df1.iloc[i,1])
+        if df1.iloc[i,1] == Patient:
+            #print("found!")
+            s = df1.iloc[i,12]
+            print(s)
+            break
+    side = s + r"Carotid"
+    Patient = r"/" + Patient + r"\*/"
+    Dir = r"E:/*"
+    suffix_comp = r"\Batch*__composition.multi.nrrd"
+    suffix_Lumen = r"\*lumenSegmentation.nrrd"
+    suffix_Wall = r"\*wallSegmentation.nrrd"
     #suffix_Donut = r"\*\RightCarotid\CommonCarotidArtery/donut"
-    suffix_save = r"\*\RightCarotid/"
-    suffix_Json = r"\*\RightCarotid\Batch*__lesionReadings.json"
+    suffix_save = r"/"
+    suffix_Json = r"\Batch*__lesionReadings.json"
 
 #filepath1 = glob.glob(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0830\*\RightCarotid\Batch*__composition.multi.nrrd')
-    filepath1 = glob.glob(Dir + Patient + suffix_comp)
+    filepath1 = glob.glob(Dir + Patient + side + suffix_comp)
 #print(filepath1[0])
-
-    filepath2 = glob.glob(Dir + Patient + suffix_Lumen)
+    
+    filepath2 = glob.glob(Dir + Patient + side + suffix_Lumen)
 #print(filepath2[0])
 
-    filepath3 = glob.glob(Dir + Patient + suffix_Wall)
+    filepath3 = glob.glob(Dir + Patient + side + suffix_Wall)
 #print(filepath3[0])
-    filepath4 = glob.glob(Dir + Patient + suffix_save)
+    filepath4 = glob.glob(Dir + Patient + side + suffix_save)
 #print(filepath4)
-    filepath5 = glob.glob(Dir + Patient + suffix_Json)
+    filepath5 = glob.glob(Dir + Patient + side + suffix_Json)
+    print(filepath5)
     return filepath1,filepath2,filepath3,filepath4,filepath5
-
+    
 def create_volume(f1,f2,f3,f4,f5):
 
 
 #print(filepath5)
+    print(f5)
     readings_d = json.load(open(f5[0]))
     CompositionData1, header2 = nrrd.read(f1[0])
 
@@ -104,26 +123,39 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     #distal_list = []
     #Center_list = []
     #distal_list2 = []
+    #print(readings_d['lesions'][0]['borders'][0]['position'])
+    #print(readings_d['lesions'][1]['borders'][0]['position'])
     test_common = []
     test_internal = []
     C_firstz = root['cross_sections'][0]['position'][2]
     C_firsty =  root['cross_sections'][0]['position'][1]
     C_firstx =  root['cross_sections'][0]['position'][0]
-    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][1]['borders'][1]['position']]
-    
+    print(readings_d['lesions'][0]['borders'][0]['position'])
+    print(readings_d['lesions'][1]['borders'][0]['position'])
+    #a = len(readings_d['lesions'][0]['borders'])-1
+    #b = len()
+    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][1]['borders'][0]['position']]
+    #print(borders[0][2],borders[1][2])
     Lower_end = borders[0][2]+(-1)*C_firstz
     Hihger_end = borders[1][2]+(-1)*C_firstz
+    #print(Lower_end)
+    #print(Hihger_end)
     #root = readings_d['initialization_points']
+    #print(distal[1]['cross_sections'])
     #distal = root['distal_segments']  
-
+    #print(Lower_end,Hihger_end)
     for section in root['cross_sections']:
         a = section['position'][2]
         a2 = section['position'][1]
         a3 = section['position'][0]
         a4 = [a3,a2,a]
         test_common.append(a4)
-
-    for section in distal[1]['cross_sections']:
+    #path = distal[0]['distal_segments'][0]['cross_sections']
+    if readings_d['root_segment']['distal_segments'][0]["segment_name"] == "InternalCarotidArtery":
+        path = distal[0]['cross_sections']
+    if readings_d['root_segment']['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
+        path = distal[1]['cross_sections']
+    for section in path:
         c = section['position'][2]
         c2 = section['position'][1]
         c3 = section['position'][0]
@@ -138,13 +170,15 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     lastyC = root['cross_sections'][-1]['position'][1]
     firstxC = root['cross_sections'][0]['position'][0]
     lastxC = root['cross_sections'][-1]['position'][0]
-
-    firstzI = distal[1]['cross_sections'][0]['position'][2]
-    lastzI = distal[1]['cross_sections'][-1]['position'][2]
-    firstyI = distal[1]['cross_sections'][0]['position'][1]
-    lastyI = distal[1]['cross_sections'][-1]['position'][1]
-    firstxI = distal[1]['cross_sections'][0]['position'][0]
-    lastxI = distal[1]['cross_sections'][-1]['position'][0]
+    
+    firstzI = path[0]['position'][2]
+    
+    lastzI = path[-1]['position'][2]
+    
+    firstyI = path[0]['position'][1]
+    lastyI = path[-1]['position'][1]
+    firstxI = path[0]['position'][0]
+    lastxI = path[-1]['position'][0]
     #lastx = distal[0]['cross_sections'][-1]['position'][0]
     test_tot = test_common + test_internal
    
@@ -189,8 +223,8 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     Hihger_end = round(Hihger_end*converterz)
     Lower_end = round(Lower_end*converterz)
     test = [[i[0]*converterx+x,i[1]*convertery+y,i[2]*converterz] for i in test_tot]
-    test = [[round(i[0]),round(i[1]),round(i[2])] for i in test]
-    #print(test)
+    test = [[round(i[0]),round(i[1])+12,round(i[2])] for i in test]
+    print(test)
     #xt = []
     #test2 = [[i[0]*converterx2+middle_center[0],i[1]*convertery2+middle_center[1],i[2]*converterz2+hoho-2] for i in test_internal]
     #test2 = [[round(i[0]),round(i[1]),round(i[2])] for i in test2]
@@ -213,7 +247,7 @@ def Find_center(image):
     x = round(centroid[0])
     y = round(centroid[1])
     return [x,y]
-
+@jit(target_backend='cuda')
 def unwrap_slice(slice):
     slice = np.array(slice)
     #print(slice.shape)
@@ -304,6 +338,7 @@ def scale_unwrap(first_half, second_half):
     total_unwrap = np.array(total_unwrap2)
     return total_unwrap
 
+@jit(target_backend='cuda')
 def vertical_slices(Center_line, labelVolume, H, L):
     #for i in Center_line:
     #    labelVolume[i[0],i[1],i[2]] = 7
@@ -363,6 +398,8 @@ def vertical_slices(Center_line, labelVolume, H, L):
 
 def new_center(image, CL):
     #centers = []
+    print(image.shape)
+    print(len(CL))
     for j in range(image.shape[2]):
         thresh = cv2.inRange(image[:,:,j], 6, 6)
 
@@ -385,39 +422,46 @@ def new_center(image, CL):
     return image
 
 def main():
-    f1,f2,f3,f4,f5 = create_file_paths("BiKE_0846")
-    labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
-    cent = Find_center(labelVolume[:,:,0])
-    end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
+    #for filename in os.listdir(r"E:\Controlled_Patients")[58:]:
+    List = ["BiKE_0584", "BiKE_0595", "BiKE_0616", "BiKE_0636"]    
+    for i in List:
+        f1,f2,f3,f4,f5 = create_file_paths(i)
+        labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
+        cent = Find_center(labelVolume[:,:,0])
+        end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
     #middle_center = Find_center(labelVolume[:,:,115])
     #print(middle_center)
-    print(end_center)
-    print(cent)
-    L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
-
-    #Total = C + d2 + d
+    #print(end_center)
+    #print(cent)
+        L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
+        #print(L,H)
+        label2 = labelVolume[:,:,L:H]
+        #print(label2.shape)
+        #print(labelVolume.shape)
     
-    slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
+        slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
+        #test = test
     
-    #label2 = LumenData[:,:,L:H]
-    #print(slice.shape)
-    np.save(f4[0] + r"Slices.txt.npy", slice)
     
-    np.save(f4[0] + r"Plaque_volume.txt", label2)
-    slice = np.load(f4[0] + r"Slices.txt.npy")
-    Unwrap_list = np.zeros([360,30, slice.shape[2]])
-    slice = new_center(slice,test)
-    for i in range(slice.shape[2]):
-        print(i)
-        first_half,second_half = unwrap_slice(slice[:,:,i])
-        total_unwrap = scale_unwrap(first_half, second_half)
-        Unwrap_list[:,:,i] = total_unwrap
+        np.save(f4[0] + r"Slices.txt.npy", slice)
+    
+        np.save(f4[0] + r"Plaque_volume.txt", label2)
+    
+        slice = np.load(f4[0] + r"Slices.txt.npy")
+        Unwrap_list = np.zeros([360,30, slice.shape[2]])
+        slice = new_center(slice,test)
+        for i in range(slice.shape[2]):
+            print(i)
+            first_half,second_half = unwrap_slice(slice[:,:,i])
+            total_unwrap = scale_unwrap(first_half, second_half)
+            Unwrap_list[:,:,i] = total_unwrap
 
-    np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
-    unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
-    #slice = np.load(f4[0] + r"Slices.txt.npy")
-#print(slice.shape)
-
+        np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
+        unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
+    
+    
+    
+    
     
     """
     from mpl_toolkits.mplot3d import Axes3D
@@ -430,7 +474,7 @@ def main():
         ax.scatter(p[0], p[1], p[2], zdir='z', c='r')
 
 # plotting lines for each point pair
-
+    
 
     ax.legend()
     ax.set_xlim3d(0, 357)
@@ -439,6 +483,7 @@ def main():
 
     plt.show()
     """
+    """
     for i in test:
     #   print(i)
        labelVolume[i[0],i[1],i[2]] = 7
@@ -446,11 +491,11 @@ def main():
         viewer = napari.Viewer()
     #viewer.add_image(total_unwrap)
         viewer.add_image(label2)
-        viewer.add_image(slice)
+        #viewer.add_image(slice)
         viewer.add_image(labelVolume)
-        viewer.add_image(unwraps)
+        #viewer.add_image(unwraps)
     napari.run()
-
+    """
     
     
 main()
