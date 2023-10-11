@@ -377,9 +377,12 @@ def new_center(image, CL):
 
 def main():
     #for filename in os.listdir(r"E:\Controlled_Patients")[58:]:
-    #List = ["BiKE_0584", "BiKE_0595", "BiKE_0616", "BiKE_0636"]    
+    List = ["BiKE_0660", "BiKE_0698","BiKE_0711","BiKE_0712"
+            ,"BiKE_0717","BiKE_0735","BiKE_0739","BiKE_0784","BiKE_0881","BiKE_0890","BiKE_0906",
+            "BiKE_0908","BiKE_0918","BiKE_0944"
+]    
     #for i in List:
-    f1,f2,f3,f4,f5 = create_file_paths("BiKE_0846")
+    f1,f2,f3,f4,f5 = create_file_paths("BiKE_0636")
     labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
     cent = Find_center(labelVolume[:,:,0])
     end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
@@ -409,9 +412,9 @@ def main():
     np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
     unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
     
-    
-    
     """
+    
+    
     
     """
     from mpl_toolkits.mplot3d import Axes3D
