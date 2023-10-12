@@ -2,6 +2,7 @@ from pyexcel_ods3 import save_data
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
+import seaborn as sb
 def load_file(path):
     xls = pd.read_csv(path)
     #df1 = pd.read_excel(xls, 'file')
@@ -24,6 +25,7 @@ def seperate_data(feature):
     return Symptomatic,Asymptomatic      
 
 file = load_file(r"E:\file.csv")
+#file = load_file(r"C:\Users\Simon\Downloads\BiKE_imported_csv.xlsx")
 list_of_features = [
 "S/AS", #0
 "Total Calcification Volume", #1
@@ -46,8 +48,29 @@ list_of_features = [
 ]
 #print(file["Total Calcification Volume"])
 #plt.scatter( X, [0] * X.shape[0])
-S,AS = seperate_data(list_of_features[17])
+S,AS = seperate_data(list_of_features[1])
+S2,AS2 = seperate_data(list_of_features[2])
 #print(hej,hej2)
+"""
 plt.scatter( S, [0] * S.shape[0], c="Red")
 plt.scatter(AS, [1] * AS.shape[0], c="Blue")
+plt.scatter( S, S2, c="Red")
+plt.scatter(AS, AS2, c="Blue")
+
+
+print(S.shape)
+print(AS.shape)
+"""
+"""
+dataset = pd.DataFrame({
+    "value": np.concatenate((S, AS)),
+    "type": np.concatenate((np.ones(S.shape), np.zeros(AS.shape)))
+})
+dataset.info()
+sb.violinplot(x="type", y="value", data=dataset)
+sb.swarmplot(x="type", y="value", data=dataset, size=2, color="k", alpha=0.3)
+"""
+
+#sb.lmplot(data=file, x="Number of calcifications", y="Total Calcification Volume", hue="S/AS")
+#sb.displot(data=file, x="Number of calcifications", row= "S", kde=True)
 plt.show()

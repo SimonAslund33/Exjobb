@@ -276,7 +276,8 @@ def main():
     #print(key == "original_shape_Flatness")
 
 
-#main()
+main()
+"""
 hej = Patients[119]
 slice,unwraps,plaque_volume,Symptom = create_path(hej)
 print(hej)
@@ -290,3 +291,4 @@ with napari.gui_qt():
 #    viewer.add_image(unwraps)
 #    viewer.add_image(slice)
 napari.run()
+"""
