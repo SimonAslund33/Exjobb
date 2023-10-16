@@ -20,6 +20,9 @@ Patients = os.listdir(r"E:\Controlled_Patients")
 #unwraps = np.load(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Unwraps.txt.npy")
 #plaque_volume = np.load(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Plaque_volume.txt.npy")
 
+xls = pd.ExcelFile(r"C:\Users\simon\CarScore.xlsx")
+df2 = pd.read_excel(xls, 'Alla med CAR-score')
+#print(df2.iloc[:,0])
 #E:\Controlled_Patients\BiKE_0623\wi-07F88BAA\RightCarotid\subvol.nrrd
 xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
@@ -213,6 +216,23 @@ def Calc_Lumen_Distance(unwraps):
     else:
         mean_tot = sum(mean_tot)/len(mean_tot)
         return mean_tot
+    
+def carSCore(Patient):
+    #print(int(Patient[6:]))
+    #print(df2["BiKE-ID"][0:])
+    for i in range(len(df2.iloc[:,0])):
+        #print(Patient[6:])
+        #print(i)
+        if int(Patient[6:]) == df2.iloc[i,0]:
+            data = {df2.iloc[i,1]}
+            data = int(list(data)[0])
+            if data < 1:
+                score = data*100
+            else:
+                score = data
+        else:
+            score = None
+    return score
 def main():
 
     Dict = {}
@@ -265,7 +285,10 @@ def main():
     #    viewer = napari.Viewer()
     #    viewer.add_image(labels_out)
     #napari.run()
-    
+for i in Patients[:-2]:
+    print(carSCore(i))  
+
+#print(df2.iloc[:,0])
 #print("Mean Calcification Distance to Lumen:", mean_CalcLumenDistance)
 #print("Maximum Calcium Arc:", max_arc)
 #print(Area_calc)
@@ -276,7 +299,7 @@ def main():
     #print(key == "original_shape_Flatness")
 
 
-main()
+#main()
 """
 hej = Patients[119]
 slice,unwraps,plaque_volume,Symptom = create_path(hej)
