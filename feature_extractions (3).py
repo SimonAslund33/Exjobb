@@ -13,7 +13,8 @@ import os
 import glob
 import csv
 from pyexcel_ods3 import save_data
-
+#from Nrrd_test import create_file_paths, create_volume, Find_center, build_Center_Line
+import math
 Patients = os.listdir(r"E:\Controlled_Patients")
 
 #slice = np.load(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Slices.txt.npy')
@@ -24,7 +25,7 @@ xls = pd.ExcelFile(r"C:\Users\simon\CarScore.xlsx")
 df2 = pd.read_excel(xls, 'Alla med CAR-score')
 #print(df2.iloc[:,0])
 #E:\Controlled_Patients\BiKE_0623\wi-07F88BAA\RightCarotid\subvol.nrrd
-xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
+xls = pd.ExcelFile(r'E:\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
 def create_path(patient):
     for i in range(len(df1)):
@@ -38,6 +39,7 @@ def create_path(patient):
     slicepath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Slices.txt.npy")
     unwrappath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Unwraps.txt.npy")
     volumepath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Plaque_volume.txt.npy")
+    
     slicepath = np.load(slicepath[0])
     unwrappath = np.load(unwrappath[0])
     volumepath = np.load(volumepath[0])
@@ -62,7 +64,7 @@ def number_of_calcifications(volume):
 
 def only_calcifications(volume,idx):
     empty = np.zeros_like(volume)
-    if np.where(volume == 1):
+    if np.where(volume == idx):
         Calc_idx = np.where(volume == idx)
     
         for i in range(len(Calc_idx[0])):
@@ -83,8 +85,11 @@ def Arc_calculations(unwrap):
     #idx = 1
         start_idx = 1
         for i in range(1,len(unique_angles)): 
-            #print(unique_angles)
-            if unique_angles[i] == 359 and unique_angles[0] == 0:
+            #print(j)
+            if len(unique_angles) == 360:
+                angles_tot.append([360])
+                break
+            elif unique_angles[i] == 359 and unique_angles[0] == 0:
                 #print("end")
                 
                 start_idx = start_idx-angles[0]
@@ -172,31 +177,63 @@ def Calc_mean_arc(arc_list):
         return (sum(tot_mean)/len(tot_mean))
 
 def Calc_Area_calculations(Calc_volume):
+    
     if 1 in Calc_volume:
-        hej = sitk.GetImageFromArray(Calc_volume)
-        extractor= featureextractor.RadiomicsFeatureExtractor()
-        result = extractor.execute(hej,hej)
+        labels_out, N = cc3d.connected_components(Calc_volume, return_N=True)
+        labels_out = cc3d.dust(labels_out, threshold=4,connectivity=26, in_place=False)
+        #stats = cc3d.statistics(labels_out)
+        #print(stats)
+        Elongation = []
+        Flatness = []
+        Sphericity = []
+        Surface_Area = []
+        Surface_Volume_Ratio = []
+        Voxel_Volume = []
+        content = np.unique(labels_out)[1:]
+        for i in content:
+            volume = only_calcifications(labels_out,i)
+            hej = sitk.GetImageFromArray(volume)
+            extractor= featureextractor.RadiomicsFeatureExtractor()
+            result = extractor.execute(hej,hej)
     #print(type(result))
-        features = []
-        for key,value in result.items():
+            features = []
+            for key,value in result.items():
         #print ("\t",key,":",value)
-            if key == "original_shape_Elongation":
-                features.append(value)
-            elif key == "original_shape_Flatness":
-                features.append(value)
-            elif key == "original_shape_Sphericity":
-                features.append(value)
-            elif key == "original_shape_SurfaceArea":
-                features.append(value)
-            elif key == "original_shape_SurfaceVolumeRatio":
-                features.append(value)
-            elif key == "original_shape_VoxelVolume":
-                features.append(value)
-            else:
-                continue
-        return features[0],features[1],features[2],features[3],features[4],features[5]
+                if key == "original_shape_Elongation":
+                    Elongation.append(value)
+                elif key == "original_shape_Flatness":
+                    Flatness.append(value)
+                elif key == "original_shape_Sphericity":
+                    Sphericity.append(value)
+                elif key == "original_shape_SurfaceArea":
+                    Surface_Area.append(value)
+                elif key == "original_shape_SurfaceVolumeRatio":
+                    Surface_Volume_Ratio.append(value)
+                elif key == "original_shape_VoxelVolume":
+                    Voxel_Volume.append(value)
+                else:
+                    continue
+        if len(Voxel_Volume) > 0:
+            Mean_Elongation = sum(Elongation)/len(Elongation)
+            Mean_Flatness = sum(Flatness)/len(Flatness)
+            Mean_Sphericity = sum(Sphericity)/len(Sphericity)
+            Mean_Surface_Area = sum(Surface_Area)/len(Surface_Area)
+            Mean_surface_Volume_Ratio = sum(Surface_Volume_Ratio)/len(Surface_Volume_Ratio)
+            Mean_Voxel_Volume = sum(Voxel_Volume)/len(Voxel_Volume)
+
+            max_calc_idx = Voxel_Volume.index(max(Voxel_Volume))
+            Largest_Elongation = Elongation[max_calc_idx]
+            Largest_Flatness = Flatness[max_calc_idx]
+            Largest_Sphericity = Sphericity[max_calc_idx]
+            Largest_Surface_Area = Surface_Area[max_calc_idx]
+            Largest_Surface_Volume_Ratio = Surface_Volume_Ratio[max_calc_idx]
+            Largest_Voxel_Volume = Voxel_Volume[max_calc_idx] 
+            return Mean_Elongation,Mean_Flatness,Mean_Sphericity,Mean_Surface_Area,Mean_surface_Volume_Ratio,Mean_Voxel_Volume,Largest_Elongation,Largest_Flatness,Largest_Sphericity,Largest_Surface_Area,Largest_Surface_Volume_Ratio,Largest_Voxel_Volume
+        else:
+            return 0,0,0,0,0,0,0,0,0,0,0,0
+
     else:
-        return 0,0,0,0,0,0
+        return 0,0,0,0,0,0,0,0,0,0,0,0
 def Calc_Lumen_Distance(unwraps):
     mean_tot = []
     for j in range(unwraps.shape[2]):
@@ -221,23 +258,75 @@ def carSCore(Patient):
     #print(int(Patient[6:]))
     #print(df2["BiKE-ID"][0:])
     for i in range(len(df2.iloc[:,0])):
-        #print(Patient[6:])
+        #print(Patient)
         #print(i)
         if int(Patient[6:]) == df2.iloc[i,0]:
+            #print("score")
             data = {df2.iloc[i,1]}
-            data = int(list(data)[0])
+            
+            data = float(list(data)[0])
+            #print(data)
             if data < 1:
-                score = data*100
+                #print("hej")
+                return round(data*100)
             else:
-                score = data
+                #print("hoj")
+                return round(data)
         else:
-            score = None
-    return score
+            continue
+    return None
+
+def Max_Stenosis(slice):
+    stenosis = 1000
+    stenosis_list = []
+    for j in range(slice.shape[2]):
+        if len(np.where(slice[:,:,j] == 5)[0]) > 0:
+            #print(j)
+            thresh = cv2.inRange(slice[:,:,j], 6, 6)
+
+            contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
+            mean_wall = np.where(slice[:,:,j] == 5)
+            #print(mean_wall)
+            mean_wall = [sum(mean_wall[0])/len(mean_wall[0]), sum(mean_wall[1])/len(mean_wall[1])]
+            distance = 1000
+            #print(mean_wall)
+            sten = 0
+            for i in contours:
+                #print(len(contours))
+                mean_lumen = sum(i)/len(i)
+                mean_lumen = [mean_lumen[0][1],mean_lumen[0][0]]
+                #print(mean_lumen)
+                #print("Mean Wall" + str(mean_wall))
+                #print("Mean Lumen" + str(mean_lumen))
+                dist = math.dist(mean_wall,mean_lumen) 
+                #print("distance " + str(distance))
+                #print("dist " + str(dist))
+                #print("Area " + str(cv2.contourArea(i)))
+                if dist < distance:
+                    distance = dist
+                
+                    if 2.0 < cv2.contourArea(i):
+                        #print(j)
+                
+                        stenosis = cv2.contourArea(i)
+                        sten = stenosis
+                    
+                        #print("stenosis " + str(stenosis))
+                    else:
+                        continue
+                else:
+                    continue
+        else:
+            continue
+    stenosis_list.append(sten)    
+    #print(stenosis_list.index(min(stenosis_list)))            
+    return min(stenosis_list)
+
 def main():
 
     Dict = {}
 
-    for i in Patients:
+    for i in Patients[2:-2]:
         print(i)
         slice,unwraps,plaque_volume,Symptom = create_path(i)
         arcs = Arc_calculations(unwraps)
@@ -247,10 +336,10 @@ def main():
         labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx = number_of_calcifications(calc_volume)
         #largest_calcification = max(stats['voxel_counts'][1:])
         #mean_size_calcification = sum(stats['voxel_counts'][1:])/N_of_calc
-        Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,TotalCalcVolume = Calc_Area_calculations(calc_volume)
-        LargeElongation,LargeFlatness,LargeSphericity,LargeSurfaceArea,LargeSurfaceVolumeRatio,LargeTotalCalcVolume = Calc_Area_calculations(labels_out)
+        Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,TotalCalcVolume,LargeElongation,LargeFlatness,LargeSphericity,LargeSurfaceArea,LargeSurfaceVolumeRatio,LargeTotalCalcVolume = Calc_Area_calculations(calc_volume)
         mean_CalcLumenDistance = Calc_Lumen_Distance(unwraps)
-
+        Car_Score = carSCore(i)
+        Maximum_Stenosis = Max_Stenosis(slice)
         thisdict = {
   
   "S/AS": Symptom,
@@ -270,8 +359,9 @@ def main():
   "Largest Calcification Elongation": LargeElongation,
   "Largest Calcification Flatness": LargeFlatness,
   "Largest Calcification Sphereicity": LargeSphericity,
-  "Mean Calcification-Lumen Distance": mean_CalcLumenDistance
-
+  "Mean Calcification-Lumen Distance": mean_CalcLumenDistance,
+  "Car Score": Car_Score,
+  "Maximum Stenosis": Maximum_Stenosis    
 
 }   
         Dict[i] = thisdict
@@ -285,8 +375,8 @@ def main():
     #    viewer = napari.Viewer()
     #    viewer.add_image(labels_out)
     #napari.run()
-for i in Patients[:-2]:
-    print(carSCore(i))  
+#for i in Patients[4:-2]:
+#    print(carSCore(i))  
 
 #print(df2.iloc[:,0])
 #print("Mean Calcification Distance to Lumen:", mean_CalcLumenDistance)
@@ -297,21 +387,48 @@ for i in Patients[:-2]:
 #print(mean_size_calcification)
 
     #print(key == "original_shape_Flatness")
-
-
+#hej = Patients[5]
+#slice,unwraps,plaque_volume,Symptom = create_path(hej)
+#f1,f2,f3,f4,f5 = create_file_paths(hej)
+#labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
+#LumenVol = only_calcifications(plaque_volume,6)
+#labels_out, N = cc3d.connected_components(LumenVol, return_N=True)
+#stats = cc3d.statistics(labels_out)
+#cent = Find_center(plaque_volume[:,:,0])
+#end_center = Find_center(plaque_volume[:,:,plaque_volume.shape[2]-1])
+    
+#L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,plaque_volume)
+#print(slice.shape)
+#print(Max_Stenosis(slice))
+#print(stats)
 #main()
-"""
-hej = Patients[119]
+
+hej = "BiKE_0754"
 slice,unwraps,plaque_volume,Symptom = create_path(hej)
-print(hej)
-#calc_volume = only_calcifications(plaque_volume)
+#print(hej)
+#calc_volume = only_calcifications(plaque_volume,1)
+#labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx = number_of_calcifications(calc_volume)
+#print(Calc_Area_calculations(calc_volume))
+#labels_out = cc3d.dust(labels_out, threshold=4,connectivity=26, in_place=False)
+#print(np.unique(labels_out))
+        #stats = cc3d.statistics(labels_out)
+#Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,TotalCalcVolume = Calc_Area_calculations(calc_volume)
+#labels_out = cc3d.dust(
+#  labels_in, threshold=100, 
+# connectivity=26, in_place=False
+#)
 #labels_out,largest_calcification,mean_size_calcification,N_of_calc = number_of_calcifications(calc_volume)
 #arcs = Arc_calculations(unwraps)
+#print(arcs)
 #print(cc3d.statistics(labels_out))
+
+
+#for i in test:
+    #   print(i)
+#    slice[i[0],i[1],i[2]] = 7
 with napari.gui_qt():
     viewer = napari.Viewer()
     viewer.add_image(plaque_volume)
-#    viewer.add_image(unwraps)
-#    viewer.add_image(slice)
+    viewer.add_image(unwraps)
+    viewer.add_image(slice)
 napari.run()
-"""
