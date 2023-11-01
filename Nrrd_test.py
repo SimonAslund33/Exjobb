@@ -20,6 +20,9 @@ import math
 #E:\wilist_BiKE_Group001_EJ\BiKE_0568\wi-F3F85BCF\LeftCarotid\BatchProcessor_20220925194821253636__lesionReadings.json
 xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
+
+#xls = pd.ExcelFile(r'E:\BIKE missing DM.xlsx')
+#df1 = pd.read_excel(xls, 'Sheet1')
 def create_file_paths(Patient):
     print(Patient)
     Patient = str(Patient)
@@ -35,12 +38,12 @@ def create_file_paths(Patient):
     side = s + r"Carotid"
     Patient = r"/" + Patient + r"\*/"
     Dir = r"E:/*"
-    suffix_comp = r"\Batch*__composition.multi.nrrd"
+    suffix_comp = r"\*__composition.multi.nrrd"
     suffix_Lumen = r"\*lumenSegmentation.nrrd"
     suffix_Wall = r"\*wallSegmentation.nrrd"
     #suffix_Donut = r"\*\RightCarotid\CommonCarotidArtery/donut"
     suffix_save = r"/"
-    suffix_Json = r"\Batch*__lesionReadings.json"
+    suffix_Json = r"\*__lesionReadings.json"
 
 #filepath1 = glob.glob(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0830\*\RightCarotid\Batch*__composition.multi.nrrd')
     filepath1 = glob.glob(Dir + Patient + side + suffix_comp)
@@ -130,6 +133,7 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     lower = 0
     higher = 0
     distance = 0
+    """
     for i in range(len(readings_d['lesions'][0]['borders'])):
         
         zC = readings_d['lesions'][0]['borders'][i]['position'][2]
@@ -151,7 +155,11 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     Hihger_end = higher+(-1)*C_firstz
     #print(Lower_end)
     #print(Hihger_end)
-    
+    """
+    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][0]['borders'][1]['position']]
+    Lower_end = borders[0][2]+(-1)*C_firstz
+    Hihger_end = borders[1][2]+(-1)*C_firstz
+
     for section in root['cross_sections']:
         a = section['position'][2]
         a2 = section['position'][1]
@@ -161,8 +169,8 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     
     if readings_d['root_segment']['distal_segments'][0]["segment_name"] == "InternalCarotidArtery":
         path = distal[0]['cross_sections']
-    if readings_d['root_segment']['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
-        path = distal[1]['cross_sections']
+    #if readings_d['root_segment']['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
+    #    path = distal[1]['cross_sections']
     for section in path:
         c = section['position'][2]
         c2 = section['position'][1]
@@ -390,42 +398,42 @@ def new_center(image, CL):
     return image
 
 def main():
-    #for filename in os.listdir(r"E:\Controlled_Patients")[58:]:
-    List = ["BiKE_0717","BiKE_0735","BiKE_0739","BiKE_0784","BiKE_0881","BiKE_0890","BiKE_0906",
-            "BiKE_0908","BiKE_0918","BiKE_0944"
-]    
-    for i in List:
-        f1,f2,f3,f4,f5 = create_file_paths(i)
-        labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
-        cent = Find_center(labelVolume[:,:,0])
-        end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
+    #for filename in os.listdir(r"E:\Controlled_Patients"):
+    #List = ["BiKE_0717","BiKE_0735","BiKE_0739","BiKE_0784","BiKE_0881","BiKE_0890","BiKE_0906",
+     #       "BiKE_0908","BiKE_0918","BiKE_0944"
+#]  #   
+    #for i in List
+    f1,f2,f3,f4,f5 = create_file_paths("ANONNF13LG1FK")
+    labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
+    cent = Find_center(labelVolume[:,:,0])
+    end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
     
-        L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
-        
-        label2 = labelVolume[:,:,L:H]
-        
-    
-        slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
+    L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
+    print(L,H)
+    label2 = labelVolume[:,:,L:H]
         
     
+    slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
+        
     
-        np.save(f4[0] + r"Slices.txt.npy", slice)
     
-        np.save(f4[0] + r"Plaque_volume.txt", label2)
+    np.save(f4[0] + r"Slices.txt.npy", slice)
     
-        slice = np.load(f4[0] + r"Slices.txt.npy")
-        Unwrap_list = np.zeros([360,30, slice.shape[2]])
-        slice = new_center(slice,test)
-        for i in range(slice.shape[2]):
-            print(i)
-            first_half,second_half = unwrap_slice(slice[:,:,i])
-            total_unwrap = scale_unwrap(first_half, second_half)
-            Unwrap_list[:,:,i] = total_unwrap
+    np.save(f4[0] + r"Plaque_volume.txt", label2)
+    
+    slice = np.load(f4[0] + r"Slices.txt.npy")
+    Unwrap_list = np.zeros([360,30, slice.shape[2]])
+    slice = new_center(slice,test)
+    for i in range(slice.shape[2]):
+        print(i)
+        first_half,second_half = unwrap_slice(slice[:,:,i])
+        total_unwrap = scale_unwrap(first_half, second_half)
+        Unwrap_list[:,:,i] = total_unwrap
 
-        np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
-        unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
+    np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
+    unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
     
-    #"""
+    
     
     
     """
@@ -454,13 +462,13 @@ def main():
        labelVolume[i[0],i[1],i[2]] = 7
     with napari.gui_qt():
         viewer = napari.Viewer()
-    #viewer.add_image(total_unwrap)
-        viewer.add_image(plaque_volume)
+        viewer.add_image(labelVolume)
+        #viewer.add_image(plaque_volume)
+        viewer.add_image(label2)
         #viewer.add_image(slice)
-        viewer.add_image(slice)
-        viewer.add_image(unwraps)
+        #viewer.add_image(unwraps)
     napari.run()
     """
     
     
-main()
+#main()
