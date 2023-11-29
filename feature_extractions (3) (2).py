@@ -16,7 +16,13 @@ from pyexcel_ods3 import save_data
 #from Nrrd_test import create_file_paths, create_volume, Find_center, build_Center_Line
 import math
 from pyevtk.hl import gridToVTK
+import pydicom
+from pydicom.data import get_testdata_files
+from pydicom.filereader import read_dicomdir
+import itk
+import sys
 Patients = os.listdir(r"E:\Controlled_Patients")
+PatientsShapes = os.listdir(r"E:\Shapes_Patients")
 
 #slice = np.load(r'C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Slices.txt.npy')
 #unwraps = np.load(r"C:\Users\simon\OneDrive\Desktop\ExJobbPlaqueInfo\BiKE_0846\wi-266BCEEA\RightCarotid\Unwraps.txt.npy")
@@ -28,6 +34,47 @@ df2 = pd.read_excel(xls, 'Alla med CAR-score')
 #E:\Controlled_Patients\BiKE_0623\wi-07F88BAA\RightCarotid\subvol.nrrd
 xls = pd.ExcelFile(r'E:\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
+def create_path2(patient):
+    for i in range(len(df1)):
+        #print(df1.iloc[i,1])
+        if df1.iloc[i,1] == patient:
+            #print("found!")
+            s = df1.iloc[i,12]
+            Symptom = df1.iloc[i,13]
+            break
+    side = s + r"Carotid"
+    volumepath = glob.glob(r"E:\Shapes_Patients/" + patient + r"/*/" + side + r"/Plaque_volume.txt.npy")
+    if glob.glob(r"E:\Shapes_Patients/" + patient + r"/*/" + side + r"/Proximal.txt.npy"):
+
+        proximalpath = glob.glob(r"E:\Shapes_Patients/" + patient + r"/*/" + side + r"/Proximal.txt.npy")
+        proximalpath = np.load(proximalpath[0])
+        shape = proximalpath.shape
+        w = shape[0]
+        h = shape[1]
+        noSlices = shape[2]
+        x = np.arange(0, w+1, dtype=np.int32)
+        y = np.arange(0, h+1, dtype=np.int32)
+        z = np.arange(0, noSlices+1, dtype=np.int32)
+        hej = glob.glob(r"E:\Shapes_Patients/" + patient + r"/*/" + side + r"/proximal.txt.npy")[0]
+        hej = hej[:-8]
+        #print(hej)
+        gridToVTK(hej, x, y, z, cellData = {'Proximal': proximalpath})
+    else:
+        proximalpath = None
+    
+    volumepath = np.load(volumepath[0])
+    shape = volumepath.shape
+    w = shape[0]
+    h = shape[1]
+    noSlices = shape[2]
+    x = np.arange(0, w+1, dtype=np.int32)
+    y = np.arange(0, h+1, dtype=np.int32)
+    z = np.arange(0, noSlices+1, dtype=np.int32)
+    hej = glob.glob(r"E:\Shapes_Patients/" + patient + r"/*/" + side + r"/Plaque_volume.txt.npy")[0]
+    hej = hej[:-8]
+    gridToVTK(hej, x, y, z, cellData = {'Plaque_volume': volumepath})
+    return volumepath,proximalpath,Symptom
+
 def create_path(patient):
     for i in range(len(df1)):
         #print(df1.iloc[i,1])
@@ -40,30 +87,50 @@ def create_path(patient):
     slicepath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Slices.txt.npy")
     unwrappath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Unwraps.txt.npy")
     volumepath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Plaque_volume.txt.npy")
-    
+    if glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Proximal.txt.npy"):
+
+        proximalpath = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Proximal.txt.npy")
+        proximalpath = np.load(proximalpath[0])
+        shape = proximalpath.shape
+        w = shape[0]
+        h = shape[1]
+        noSlices = shape[2]
+        x = np.arange(0, w+1, dtype=np.int32)
+        y = np.arange(0, h+1, dtype=np.int32)
+        z = np.arange(0, noSlices+1, dtype=np.int32)
+        hej = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/proximal.txt.npy")[0]
+        hej = hej[:-8]
+        #print(hej)
+        gridToVTK(hej, x, y, z, cellData = {'Proximal': proximalpath})
+    else:
+        proximalpath = None
     slicepath = np.load(slicepath[0])
     unwrappath = np.load(unwrappath[0])
     volumepath = np.load(volumepath[0])
-    """
+    
+    
     shape = volumepath.shape
+    print(shape)
     w = shape[0]
     h = shape[1]
     noSlices = shape[2]
     x = np.arange(0, w+1, dtype=np.int32)
     y = np.arange(0, h+1, dtype=np.int32)
     z = np.arange(0, noSlices+1, dtype=np.int32)
-    hej = r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Plaque_volume"
-    print(hej)
+    hej = glob.glob(r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Plaque_volume.txt.npy")[0]
+    hej = hej[:-8]
+    #print(hej)
     gridToVTK(hej, x, y, z, cellData = {'Plaque_volume': volumepath})
-    """
-    return slicepath,unwrappath,volumepath,Symptom
+    
+    return slicepath,unwrappath,volumepath,Symptom,proximalpath
 
 def number_of_calcifications(volume):
 
     #labels_out = cc3d.connected_components(volume)
     labels_out, N = cc3d.connected_components(volume, return_N=True)
-    stats = cc3d.statistics(labels_out)
-    if len(stats['voxel_counts']) > 1:
+    if np.any(volume == 1):
+        
+        stats = cc3d.statistics(labels_out)
         Total_volume = sum(stats['voxel_counts'][1:])
         largest_calcification = max(stats['voxel_counts'][1:])
         idx = np.where(stats['voxel_counts'][1:]==largest_calcification)
@@ -74,6 +141,7 @@ def number_of_calcifications(volume):
         largest_calcification = 0
         mean_size_calcification = 0
         largest_calc_vol = np.zeros_like(labels_out)
+        N = 0
 
     return labels_out,largest_calcification,mean_size_calcification,N,largest_calc_vol,Total_volume
 
@@ -89,7 +157,7 @@ def only_calcifications(volume,idx):
 
 def Arc_calculations(unwrap):
     angles_tot = []
-    #print(angles_tot)
+    
     for j in range(unwrap.shape[2]):
     #print(unwrap.shape)
         calc_pixels = np.where(unwrap[:,:,j] == 1)
@@ -123,7 +191,7 @@ def Arc_calculations(unwrap):
         if angles[0] > 0:
             angles_tot.append(angles)
 
-    
+    print(angles_tot)
     return angles_tot
 
 PatientID = []
@@ -195,9 +263,10 @@ def Calc_Area_calculations(Calc_volume):
     
     if 1 in Calc_volume:
         labels_out, N = cc3d.connected_components(Calc_volume, return_N=True)
+        #print(labels_out)
         labels_out = cc3d.dust(labels_out, threshold=4,connectivity=26, in_place=False)
         stats = cc3d.statistics(labels_out)
-        #print(stats)
+        print(stats)
         Total_volume = sum(stats['voxel_counts'][1:])
         #print(Total_volume)
         Elongation = []
@@ -219,7 +288,7 @@ def Calc_Area_calculations(Calc_volume):
             hej = sitk.GetImageFromArray(volume)
             extractor= featureextractor.RadiomicsFeatureExtractor()
             result = extractor.execute(hej,hej)
-            print(result)
+            #print(result)
     #print(type(result))
             features = []
             for key,value in result.items():
@@ -353,10 +422,13 @@ def mean_Stenosis(slice):
 def max_stenosis_grade(slice):
     stenosis = []
     for i in range(slice.shape[2]):
+        print(i)
         x = np.where(slice[:,:,i] == 6)
         y = np.count_nonzero(slice[:,:,i])
         x = len(x[0])
         sten = x/y
+        print(x)
+        print(y)
         if sten < 1:
             stenosis.append(1- sten)
     
@@ -371,21 +443,83 @@ def max_stenosis_grade(slice):
 
     return(max(stenosis)), stenosis_label, (sum(stenosis)/len(stenosis))
 
+def lesion_calc_proportion(volume):
+   
+    calc = only_calcifications(volume,1)
+    lumen_vol = only_calcifications(volume,6)
+    lumen_vol = np.count_nonzero(lumen_vol)
+    calc = np.count_nonzero(calc)
+    vol = np.count_nonzero(volume)
+    print(lumen_vol)
+    print(vol)
+    lesion_vol = vol - lumen_vol
+    proportion = calc/lesion_vol
+    return proportion*100
+def ShapesDict():
+    Dict = {}
+
+    for i in PatientsShapes:
+        print(i)
+        plaque_volume,proximal,Symptom = create_path2(i)
+        if np.any(proximal == 1):
+            lesion_calc_prop = lesion_calc_proportion(proximal)
+            calc_proximal = only_calcifications(proximal,1)
+            Elongation_prox,Flatness_prox,Sphericity_prox,SurfaceArea_prox,SurfaceVolumeRatio_prox,LargeSurfaceArea_prox,LargeSurfaceVolumeRatio_prox = Calc_Area_calculations(calc_proximal)
+            
+        
+            
+        else:
+            
+            lesion_calc_prop = None
+            Elongation_prox = None
+            Flatness_prox = None
+            Sphericity_prox = None
+        thisdict = {
+  
+    "S/AS": Symptom,
+    "Proximal Calc Elongation": Elongation_prox,
+    "Proximal Calc Flatness": Flatness_prox,
+    "Proximal Calc Sphericity": Sphericity_prox,
+    "Lesion Calc Proportion": lesion_calc_prop,
+}   
+        Dict[i] = thisdict
+    
+    #print(Dict)
+    df = pd.DataFrame(Dict).T  # transpose to look just like the sheet above
+    df.to_csv('ShapesProximal.csv')
+
 def main():
 
     Dict = {}
 
     for i in Patients[2:-2]:
         print(i)
-        slice,unwraps,plaque_volume,Symptom = create_path(i)
+        slice,unwraps,plaque_volume,Symptom,proximal = create_path(i)
+        """
+        if np.any(proximal == 1):
+            lesion_calc_prop = lesion_calc_proportion(proximal)
+            calc_proximal = only_calcifications(proximal,1)
+            Elongation_prox,Flatness_prox,Sphericity_prox,SurfaceArea_prox,SurfaceVolumeRatio_prox,LargeSurfaceArea_prox,LargeSurfaceVolumeRatio_prox = Calc_Area_calculations(calc_proximal)
+            
+        
+            
+        else:
+            
+            lesion_calc_prop = None
+            Elongation_prox = None
+            Flatness_prox = None
+            Sphericity_prox = None
+        """
+        calc_volume = only_calcifications(plaque_volume,1)
+        lesion_calc_prop = lesion_calc_proportion(plaque_volume)
         arcs = Arc_calculations(unwraps)
         max_arc = Calc_maximum_arc(arcs)
         mean_arc = Calc_mean_arc(arcs)
-        calc_volume = only_calcifications(plaque_volume,1)
         labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx,TotalCalcVolume = number_of_calcifications(calc_volume)
         #largest_calcification = max(stats['voxel_counts'][1:])
         #mean_size_calcification = sum(stats['voxel_counts'][1:])/N_of_calc
         Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,LargeSurfaceArea,LargeSurfaceVolumeRatio = Calc_Area_calculations(calc_volume)
+        
         mean_CalcLumenDistance = Calc_Lumen_Distance(unwraps)
         Car_Score = carSCore(i)
         PlaqueBurden_Vol_Ratio = PlaqueBurden(i)
@@ -409,11 +543,13 @@ def main():
   "Mean Calc Arc": mean_arc,
   "Total Calc Surface Area": SurfaceArea,
   "Total Calc Surface/Vol Ratio": SurfaceVolumeRatio,
-  "Total Calc Elongation": Elongation,
-  "Total Calc Flatness": Flatness,
-  "Total Calc Sphericity": Sphericity,
+ 
+  #"Proximal Calc Elongation": Elongation_prox,
+  #"Proximal Calc Flatness": Flatness_prox,
+  #"Proximal Calc Sphericity": Sphericity_prox,
   "Largest Calc Surface Area": LargeSurfaceArea,
   "Largest Calc Surface/Vol Ratio": LargeSurfaceVolumeRatio,
+  "Lesion Calc Proportion": lesion_calc_prop,
   #"Largest Calc Elongation": LargeElongation,
   #"Largest Calc Flatness": LargeFlatness,
   #"Largest Calc Sphereicity": LargeSphericity,
@@ -430,7 +566,10 @@ def main():
   "Mean Stenosis": mean_stenosis,
   "Stenosis grade": Stenosis_grade,
   "Mean Calc-Lumen Distance": mean_CalcLumenDistance,
-  "Car Score": Car_Score
+  "Total Calc Elongation": Elongation,
+  "Total Calc Flatness": Flatness,
+  "Total Calc Sphericity": Sphericity,
+  #"Car Score": Car_Score
   
       
 
@@ -440,69 +579,37 @@ def main():
     #print(Dict)
     df = pd.DataFrame(Dict).T  # transpose to look just like the sheet above
     df.to_csv('file.csv')
-    #df.to_excel('file.xls')
-    #print(thisdict)
-    #with napari.gui_qt():
-    #    viewer = napari.Viewer()
-    #    viewer.add_image(labels_out)
-    #napari.run()
-#for i in Patients[4:-2]:
-#    print(carSCore(i))  
-
-#import pydicom
-#from pydicom.data import get_testdata_files
-#list = np.empty([512,512])
-#for filename in os.listdir(r"C:\Users\Simon\Downloads\BiKE_0846\BiKE_0846\2195652772\2195653733"):
-#    dcm_data = pydicom.dcmread(r"C:\Users\Simon\Downloads\BiKE_0846\BiKE_0846\2195652772\2195653733/" + filename)
-#    im = dcm_data.pixel_array
-#    list = np.append(list, im, axis=2)
-
-#print(list.shape)
-
-#plt.imshow(im, cmap='gray')
-#plt.axis('off')
-#plt.title('Axial Slice of a Chest-CT')
-#plt.show()
-#print(dcm_data)
-#ds = pydicom.dcmread(filename)
-#plt.imshow(ds.pixel_array, cmap=plt.cm.bone) 
+    
 #main()
-hej = "BiKE_0788"
-slice,unwraps,plaque_volume,Symptom = create_path(hej)
-#shape = plaque_volume.shape
-#w = shape[0]
-#h = shape[1]
-#noSlices = shape[2]
-#x = np.arange(0, w+1, dtype=np.int32)
-#y = np.arange(0, h+1, dtype=np.int32)
-#z = np.arange(0, noSlices+1, dtype=np.int32)
-#hej = r"E:\Controlled_Patients/" + patient + r"/*/" + side + r"/Plaque_volume"
-#gridToVTK("E:\Controlled_Patients\BiKE_0788\wi-1B16AFB4\RightCarotid\Plaque_volume", x, y, z, cellData = {'Plaque_volume': plaque_volume})
-#Maximum_Stenosis,mean_stenosis = Max_Stenosis(slice)
+patient = "BiKE_0813"
+slice,unwraps,plaque_volume,Symptom,proximal = create_path(patient)
+calc_volume = only_calcifications(plaque_volume,1)
+
+Calc_Area_calculations(calc_volume)
+max_stenosis_grade(slice)
+# Read DICOM series
+#series_reader = itk.ImageSeriesReader.New()
+#series_reader.SetFileNames(glob.glob(r"E:\DICOM_Group_002001000\BiKE_0595/*.dcm")[0])
+#series_reader.Update()
+arc_list=Arc_calculations(unwraps)
+# Access metadata and pixel data
+#image = series_reader.GetOutput()
+#spacing = image.GetSpacing()
+#pixel_array = itk.GetArrayViewFromImage(image)
+#"""
+print(Calc_maximum_arc(arc_list))
+
+#slice,unwraps,plaque_volume,Symptom,proximal = create_path("BiKE_0747")
+#hej = np.load(r"E:\Controlled_Patients\BiKE_0747\wi-35C72A89\LeftCarotid\Slices.txt.npy")
 #print(hej)
-#PlaqueBurden(hej)
-#calc_volume = only_calcifications(plaque_volume,1)
-#LRNC_volume = only_calcifications(plaque_volume,2)
-#IPH_volume = only_calcifications(plaque_volume,3)
-#labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx = number_of_calcifications(IPH_volume)
-#labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx = number_of_calcifications(LRNC_volume)
-#labels_out,largest_calcification,mean_size_calcification,N_of_calc,idx,TotalCalcVolume = number_of_calcifications(calc_volume)
-#Elongation,Flatness,Sphericity,SurfaceArea,SurfaceVolumeRatio,LargeSurfaceArea,LargeSurfaceVolumeRatio = Calc_Area_calculations(calc_volume)
-#print(Elongation)
-#print(Flatness)
-#print(Sphericity)
-#print(largest_calcification,mean_size_calcification,N_of_calc)
-#print(max_stenosis_grade(slice))
-#"""
-#"""
 #for i in test:
     #   print(i)
 #    slice[i[0],i[1],i[2]] = 7
+
 with napari.gui_qt():
     viewer = napari.Viewer()
     viewer.add_image(plaque_volume)
-#    viewer.add_image(labels_out)
-#    viewer.add_image(slice)
-    #viewer.add_image(list)
+#    viewer.add_image(proximal)
+    viewer.add_image(slice)
+#    viewer.add_image(List)
 napari.run()
-#"""

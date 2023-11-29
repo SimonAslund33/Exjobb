@@ -20,11 +20,11 @@ import math
 #E:\wilist_BiKE_Group001_EJ\BiKE_0568\wi-F3F85BCF\LeftCarotid\BatchProcessor_20220925194821253636__lesionReadings.json
 xls = pd.ExcelFile(r'C:\Users\simon\Downloads\BiKE_imported_csv.xlsx')
 df1 = pd.read_excel(xls, 'BiKE Elucid plus operation')
-
+#E:\Shapes_Patients\BiKE_0568
 #xls = pd.ExcelFile(r'E:\BIKE missing DM.xlsx')
 #df1 = pd.read_excel(xls, 'Sheet1')
 def create_file_paths(Patient):
-    print(Patient)
+    #print(Patient)
     Patient = str(Patient)
     #list = np.unique(df1.iloc[:,1])
     #print(list)
@@ -33,11 +33,11 @@ def create_file_paths(Patient):
         if df1.iloc[i,1] == Patient:
             #print("found!")
             s = df1.iloc[i,12]
-            print(s)
+            #print(s)
             break
     side = s + r"Carotid"
     Patient = r"/" + Patient + r"\*/"
-    Dir = r"E:/*"
+    Dir = r"E:\Controlled_Patients"
     suffix_comp = r"\*__composition.multi.nrrd"
     suffix_Lumen = r"\*lumenSegmentation.nrrd"
     suffix_Wall = r"\*wallSegmentation.nrrd"
@@ -57,20 +57,20 @@ def create_file_paths(Patient):
     filepath4 = glob.glob(Dir + Patient + side + suffix_save)
 #print(filepath4)
     filepath5 = glob.glob(Dir + Patient + side + suffix_Json)
-    print(filepath5)
+    #print(filepath5)
     return filepath1,filepath2,filepath3,filepath4,filepath5
     
 def create_volume(f1,f2,f3,f4,f5):
 
 
 #print(filepath5)
-    print(f5)
+    #print(f5)
     readings_d = json.load(open(f5[0]))
     CompositionData1, header2 = nrrd.read(f1[0])
 
     LumenData, header2 = nrrd.read(f2[0])
     WallData, header3 = nrrd.read(f3[0])
-    print(CompositionData1.shape)
+    #print(CompositionData1.shape)
 
     comp = np.zeros_like(CompositionData1[:,:,:,0])
 
@@ -156,9 +156,58 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     #print(Lower_end)
     #print(Hihger_end)
     """
-    borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][0]['borders'][1]['position']]
-    Lower_end = borders[0][2]+(-1)*C_firstz
-    Hihger_end = borders[1][2]+(-1)*C_firstz
+    if len(readings_d['lesions']) == 1:
+        lower = readings_d['lesions'][0]['borders'][0]['position'][2]
+        higher = readings_d['lesions'][0]['borders'][1]['position'][2]
+        middle = None
+        
+    elif len(readings_d['lesions'][1]['borders']) == 1:
+        higher = readings_d['lesions'][1]['borders'][0]['position'][2]
+        
+        dis = 0
+        for i in readings_d['lesions'][0]['borders']:
+            if abs(i['position'][2] - higher) > dis:
+                lower = i['position'][2]
+                dis = abs(i['position'][2] - higher)
+        dis = 0
+        for i in readings_d['lesions'][0]['borders']:
+            if abs(i['position'][2] - lower) > dis:
+                middle = i['position'][2]
+                dis = abs(i['position'][2] - lower)         
+    
+    else:
+        dis = 1000
+        for i in readings_d['lesions'][0]['borders']:
+            for j in readings_d['lesions'][1]['borders']:
+                #print(j['position'][2],i['position'][2])
+                if abs(j['position'][2] - i['position'][2]) < dis:
+                    middle = i['position'][2]
+                    dis = abs(j['position'][2] - i['position'][2])
+
+        for i in readings_d['lesions'][1]['borders']:
+            if i['position'][2] != middle:
+                higher = i['position'][2]
+    
+        dis = 0
+        for i in readings_d['lesions'][0]['borders']:
+            if abs(i['position'][2] - higher) > dis:
+                lower = i['position'][2]
+                dis = abs(i['position'][2] - higher)
+    #print(lower,middle,higher)
+    if middle == None:
+        Lower_end = lower+(-1)*C_firstz
+        Hihger_end = higher+(-1)*C_firstz
+        
+    else:
+        Lower_end = lower+(-1)*C_firstz
+        Hihger_end = higher+(-1)*C_firstz
+        middle =  middle+(-1)*C_firstz
+    
+    #borders = [readings_d['lesions'][0]['borders'][0]['position'], readings_d['lesions'][1]['borders'][1]['position']]
+    #Lower_end = borders[0][2]+(-1)*C_firstz
+    #Hihger_end = borders[1][2]+(-1)*C_firstz
+    #print(borders)
+    #middle = borders[1]
 
     for section in root['cross_sections']:
         a = section['position'][2]
@@ -168,9 +217,14 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
         test_common.append(a4)
     
     if readings_d['root_segment']['distal_segments'][0]["segment_name"] == "InternalCarotidArtery":
+        #print("hej")
         path = distal[0]['cross_sections']
-    #if readings_d['root_segment']['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
-    #    path = distal[1]['cross_sections']
+    elif len(readings_d['root_segment']['distal_segments']) > 1 and readings_d['root_segment']['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
+        path = distal[1]['cross_sections']
+    elif readings_d['root_segment']['distal_segments'][0]['distal_segments'][1]["segment_name"] == "InternalCarotidArtery":
+        path = distal[0]['distal_segments'][1]['cross_sections']
+    elif readings_d['root_segment']['distal_segments'][0]['distal_segments'][0]["segment_name"] == "InternalCarotidArtery":
+        path = distal[0]['distal_segments'][0]['cross_sections']
     for section in path:
         c = section['position'][2]
         c2 = section['position'][1]
@@ -197,7 +251,7 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     lastxI = path[-1]['position'][0]
     
     test_tot = test_common + test_internal
-   
+    
     for i in test_tot:
         i[0] = i[0]-firstxC
         i[1] = i[1]-firstyC
@@ -214,9 +268,15 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     convertery = (abs(y-y2)/lengthY)
     converterx = (abs(x-x2)/lengthX)
     
-    
-    Hihger_end = round(Hihger_end*converterz)
-    Lower_end = round(Lower_end*converterz)
+    if middle == None:
+        Hihger_end = round(Hihger_end*converterz)
+        Lower_end = round(Lower_end*converterz)
+        middle = abs(round((Hihger_end-Lower_end)/2))+Lower_end
+    else:
+        Hihger_end = round(Hihger_end*converterz)
+        Lower_end = round(Lower_end*converterz)
+        middle = round(middle*converterz)
+    #print(Lower_end,middle,Hihger_end)
     test = [[i[0]*converterx+x,i[1]*convertery+y,i[2]*converterz] for i in test_tot]
     test = [[round(i[0]),round(i[1]),round(i[2])] for i in test]
     #print(test)
@@ -224,7 +284,7 @@ def build_Center_Line(x,y,x2,y2, readings_d, labelVolume):
     
    
 
-    return Lower_end,Hihger_end,test
+    return Lower_end,middle,Hihger_end,test
 
 
 
@@ -348,7 +408,7 @@ def vertical_slices(Center_line, labelVolume, H, L):
     )
    
     slice = np.zeros([labelVolume.shape[0], labelVolume.shape[1], len(range(2,new_end-2))])
-    
+    cent_list = []
     
     for k in range(2,new_end-2):
     
@@ -357,7 +417,8 @@ def vertical_slices(Center_line, labelVolume, H, L):
         line_fit = Line.best_fit(points[(k-2):(k+2)])
         
         point_in_plane = points[k]
-        
+        #print(point_in_plane)
+        #slice[point_in_plane[0],point_in_plane[1],point_in_plane[2]-L-1] == 7 
         for i in range(volume_short.shape[0]):
             for j in range(volume_short.shape[1]):
                 distance = 1000
@@ -369,50 +430,85 @@ def vertical_slices(Center_line, labelVolume, H, L):
                         distance = dist
                         
                         slice[i,j,k-2] = volume_short[i,j,h]
-                
+        cent_list.append([point_in_plane[0],point_in_plane[1],k-2])        
                         
-    return slice, volume_short, labelVolume
+    return slice, volume_short, labelVolume,cent_list
 
 def new_center(image, CL):
     
-    print(image.shape)
-    print(len(CL))
+    #print(image.shape)
+    #print(len(CL))
+    
     for j in range(image.shape[2]):
         thresh = cv2.inRange(image[:,:,j], 6, 6)
-
-        contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
         
+        contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
+        cent = CL[j]
+        #print(cent) 
         distance = 1000
         for i in contours:
             point = (sum(i)/len(i))
             
             point = [round(k) for k in point[0]]
-            dist = np.sqrt( (point[1] - CL[j][0])**2 + (point[0] - CL[j][1])**2 )
+            #print(point)
+            #image[CL[j][0],CL[j][1],j] = 8
+            #dist = np.sqrt( (point[1] - CL[j][0])**2 + (point[0] - CL[j][1])**2 )
             
+            dist = np.sqrt( (point[1] - cent[0])**2 + (point[0] - cent[1])**2 )
             if dist < distance:
+                #print("hej")
                 distance = dist
                 closest_point = point
-            
+        #image[cent[0],cent[1],j] = 8    
         image[closest_point[1],closest_point[0],j] = 7
         
     return image
 
 def main():
-    #for filename in os.listdir(r"E:\Controlled_Patients"):
+    
     #List = ["BiKE_0717","BiKE_0735","BiKE_0739","BiKE_0784","BiKE_0881","BiKE_0890","BiKE_0906",
      #       "BiKE_0908","BiKE_0918","BiKE_0944"
-#]  #   
-    #for i in List
-    f1,f2,f3,f4,f5 = create_file_paths("ANONNF13LG1FK")
-    labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
-    cent = Find_center(labelVolume[:,:,0])
-    end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
+#]  #
+    """
+    #for i in 
+        print(filename)
+    #filename =  "BiKE_0747"
+        f1,f2,f3,f4,f5 = create_file_paths(filename)
+        labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
+        cent = Find_center(labelVolume[:,:,0])
+        end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
     
-    L,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
-    print(L,H)
-    label2 = labelVolume[:,:,L:H]
-        
-    
+        L,M,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
+    #print(L,H)
+
+        print("hej "+str(L)+ " "+str(M)+" "+str(H))
+        if L > H:
+            print(filename)
+            #print("Error "+ str(L)+" "+ str(M) +" "+ str(H))
+            
+            M = abs(round((L-H)/2))+H
+            print("Error1 "+ str(L)+" "+ str(M) +" "+ str(H))
+            plaque_volume = labelVolume[:,:,H:L]
+            proximal = labelVolume[:,:,H:M]
+            distal = labelVolume[:,:,M:L]
+            np.save(f4[0] + r"Plaque_volume.txt", plaque_volume)
+            np.save(f4[0] + r"Distal.txt", distal)
+            np.save(f4[0] + r"Proximal.txt", proximal)
+        else:
+            if L > M or L > H or M > H:
+                print(filename)
+                print("Error2 "+ str(L)+" "+ str(M) +" "+ str(H))
+            proximal = labelVolume[:,:,L:M]
+            distal = labelVolume[:,:,M:H]
+            plaque_volume = labelVolume[:,:,L:H]
+            np.save(f4[0] + r"Plaque_volume.txt", plaque_volume)
+            np.save(f4[0] + r"Distal.txt", distal)
+            np.save(f4[0] + r"Proximal.txt", proximal)
+
+    #hejhoj = np.load(r"E:\Controlled_Patients\BiKE_0747\wi-35C72A89\LeftCarotid\Plaque_volume.txt.npy")
+    #print(hejhoj)
+    """
+    """
     slice, label2, labelVolume2 = vertical_slices(test, labelVolume,H,L)
         
     
@@ -435,7 +531,7 @@ def main():
     
     
     
-    
+    """
     """
     from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
@@ -456,19 +552,59 @@ def main():
 
     plt.show()
     """
+    #"""
+    for filename in os.listdir(r"E:\Controlled_Patients")[60:-2]:
+        #filename =  "BiKE_0603"
+        print(filename)
+        f1,f2,f3,f4,f5 = create_file_paths(filename)
+    #slice = np.load(f4[0] + r"Slices.txt.npy")
+    
+        labelVolume, reading, LumenData = create_volume(f1,f2,f3,f4,f5)
+    
+        cent = Find_center(labelVolume[:,:,0])
+        end_center = Find_center(labelVolume[:,:,labelVolume.shape[2]-1])
+    
+        L,M,H,test = build_Center_Line(cent[0],cent[1],end_center[0],end_center[1],reading,labelVolume)
+        print(L,H)
+    
+        slice, label2, labelVolume2,cent_list = vertical_slices(test, labelVolume,H,L)
+        np.save(f4[0] + r"Plaque_volume.txt", label2)
+        np.save(f4[0] + r"Slices.txt.npy", slice)
+        print(len(cent_list))
+        print(cent_list)
+        slice = np.load(f4[0] + r"Slices.txt.npy")
+        slice = new_center(slice,cent_list)
+        Unwrap_list = np.zeros([360,30, slice.shape[2]])
+        for i in range(slice.shape[2]):
+            print(i)
+            first_half,second_half = unwrap_slice(slice[:,:,i])
+            total_unwrap = scale_unwrap(first_half, second_half)
+            Unwrap_list[:,:,i] = total_unwrap
+
+        np.save(f4[0] +r"Unwraps.txt.npy", Unwrap_list)
+    #"""
     """
-    for i in test:
+    filename =  "BiKE_0643"
+    print(filename)
+    f1,f2,f3,f4,f5 = create_file_paths(filename)
+    #unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
+    
+    plaquevol = np.load(f4[0] +r"Plaque_volume.txt.npy")
+    unwraps = np.load(f4[0] +r"Unwraps.txt.npy")
+    slice = np.load(f4[0] + r"Slices.txt.npy")
+    #for i in test:
     #   print(i)
-       labelVolume[i[0],i[1],i[2]] = 7
+    #   labelVolume[i[0],i[1],i[2]] = 8
     with napari.gui_qt():
         viewer = napari.Viewer()
-        viewer.add_image(labelVolume)
-        #viewer.add_image(plaque_volume)
-        viewer.add_image(label2)
-        #viewer.add_image(slice)
-        #viewer.add_image(unwraps)
+    #    viewer.add_image(labelVolume)
+        viewer.add_image(plaquevol)
+    #    viewer.add_image(proximal)
+        #viewer.add_image(distal)
+        viewer.add_image(slice)
+        viewer.add_image(unwraps)
     napari.run()
+    
+    
     """
-    
-    
-#main()
+main()
