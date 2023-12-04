@@ -17,6 +17,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import metrics
 from imblearn.over_sampling import RandomOverSampler,SMOTE
 from imblearn.under_sampling import RandomUnderSampler,NearMiss
+import xgboost as xgb
+from xgboost import XGBClassifier
+from catboost import CatBoostRegressor
+from catboost import Pool, CatBoostClassifier
 
 def load_file(path):
     xls = pd.read_csv(path)
@@ -258,10 +262,98 @@ def gradientboostingclassifier(filename,samplemethod):
     gradient_booster = GradientBoostingClassifier(learning_rate=0.1)
     gradient_booster.fit(X_train,y_train)
     print(metrics.classification_report(y_test,gradient_booster.predict(X_test)))
+
+def xgboost(filename):
+    
+    data = filename
+    data_values = data.iloc[:,0:]
+    data_values = data_values.dropna()
+    y = data_values["S/AS"].values
+    data_values = data_values.iloc[:,3:30]
+    #for i in range(len(y)):
+    #    if y[i] == "S":
+    #        y[i] = 1
+    #    if y[i] == "AS":
+    #        y[i] = 0
+  
+    #data_values = data_values.drop(['Number of calc', 'Largest Calc Vol','Max Calc Arc','Mean Calc Arc','Largest Calc Surface Area','Largest Calc Surface/Vol Ratio','Lesion Calc Proportion','Largest IPH','Number of IPHs','Largest LRNC','Number of LRNCs','Plaque Burden/Vol Ratio','Mean Calc-Lumen Distance','Total Calc Elongation','Total Calc Flatness','Total Calc Sphericity'], axis=1)
+    X_train,X_test,y_train,y_test=train_test_split(data_values,y,stratify=y,test_size=0.4,random_state=42)
+    # read in data
+    #dtrain = xgb.DMatrix('demo/data/agaricus.txt.train')
+    #dtest = xgb.DMatrix('demo/data/agaricus.txt.test')
+    # specify parameters via map
+    #param = {'max_depth':2, 'eta':1, 'objective':'binary:logistic' }
+    #num_round = 2
+    #bst = xgb.train(param, X_train, num_round)
+    # make prediction
+    #preds = bst.predict(X_test)
+   
+    model = XGBClassifier()
+    model.fit(X_train, y_train)
+    print(metrics.classification_report(y_test,model.predict(X_test)))
+def cat(filename,samplemethod):
+    
+    data = filename
+    data_values = data.iloc[:,0:]
+    data_values = data_values.dropna()
+    y = data_values["S/AS"].values
+    data_values = data_values.iloc[:,3:30]
+    #for i in range(len(y)):
+    #    if y[i] == "S":
+    #        y[i] = 1
+    #    if y[i] == "AS":
+    #        y[i] = 0
+  
+    #data_values = data_values.drop(['Number of calc', 'Largest Calc Vol','Max Calc Arc','Mean Calc Arc','Largest Calc Surface Area','Largest Calc Surface/Vol Ratio','Lesion Calc Proportion','Largest IPH','Number of IPHs','Largest LRNC','Number of LRNCs','Plaque Burden/Vol Ratio','Mean Calc-Lumen Distance','Total Calc Elongation','Total Calc Flatness','Total Calc Sphericity'], axis=1)
+    X_train,X_test,y_train,y_test=train_test_split(data_values,y,stratify=y,test_size=0.4,random_state=42)
+    
+    if samplemethod == "RandomOverSampler":
+        print("RandomOverSampler Up Sampling Method Used")
+        oversample = RandomOverSampler(sampling_strategy=1)
+    # fit and apply the transform
+        X_train, y_train = oversample.fit_resample(X_train, y_train)
+    if samplemethod == "SMOTE":
+        print("SMOTE Up Sampling Method Used")
+        smote = SMOTE(random_state=42)
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+    if samplemethod == "RandomUnderSampler":
+        print("RandomUnderSampler Down Sampling Method Used")
+        undersample = RandomUnderSampler(random_state=42)
+        X_train, y_train = undersample.fit_resample(X_train, y_train)
+    if samplemethod == "NearMiss":
+        print("NearMiss Down Sampling Method Used")
+        nearmiss = NearMiss(version=2)
+        X_train, y_train = nearmiss.fit_resample(X_train, y_train)
+
+
+    train_dataset = Pool(data=X_train,
+                     label=y_train,
+                    )
+
+    eval_dataset = Pool(data=X_test,
+                    label=y_test,
+                    )
+    model = CatBoostClassifier(iterations=10,
+                           learning_rate=1,
+                           depth=2,
+                           loss_function='MultiClass')
+    # Fit model
+
+    model.fit(train_dataset)
+    # Get predicted classes
+    preds_class = model.predict(eval_dataset)
+    # Get predicted probabilities for each class
+    preds_proba = model.predict_proba(eval_dataset)
+    # Get predicted RawFormulaVal
+    preds_raw = model.predict(eval_dataset,
+                          prediction_type='RawFormulaVal')
+    print(metrics.classification_report(y_test,model.predict(eval_dataset)))
 file = load_file(r"E:\file.csv")
 
 #knn(file,"NearMiss")
 #LDA_classifier(file,"RandomOverSampler")
 #regression_model(file)
 #logregression_plot(file)
-gradientboostingclassifier(file, "SMOTE")
+#gradientboostingclassifier(file, "SMOTE")
+#xgboost(file)
+cat(file,"SMOTE")
