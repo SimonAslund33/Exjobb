@@ -5,9 +5,9 @@ library(ggplot2)
 library(GSA)
 library(tidyverse)
 
-Flat = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Flatness.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
-Elong = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Elongation.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
-Spher = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Sphericity.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
+Flat = read.table("C:/Users/simon/Downloads/Top15Bot15FlatnessBio.txt", header = TRUE, sep = ",")
+Elong = read.table("C:\Users\simon\Downloads\Top15Bot15ElongationBio.txt", header = TRUE, sep = ",")
+Spher = read.table("C:/Users/simon/Downloads/Top15Bot15SphericityBio.txt", header = TRUE, sep = ",")
 foldchange = Flat$fc
 foldchange2 = lapply(foldchange, log2)
 gmt_file <-GSA.read.gmt(paste("C:/Users/Simon/Downloads/",
