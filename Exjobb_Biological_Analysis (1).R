@@ -6,9 +6,9 @@ library(tidyverse)
 library(RColorBrewer) # for a colourful plot
 library(ggrepel) # for nice annotations
 
-Flat = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Flatness.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
-Elong = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Elongation.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
-Spher = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Sphericity.top.bottom.fifteen.RNASeq.plaque.txt", header = TRUE, sep = "")
+Flat = read.table("C:/Users/simon/Downloads/Top15Bot15FlatnessBio.txt", header = TRUE, sep = "")
+Elong = read.table("C:/Users/simon/Downloads/Top15Bot15ElongationBio.txt", header = TRUE, sep = "")
+Spher = read.table("C:/Users/simon/Downloads/Top15Bot15SphericityBio.txt", header = TRUE, sep = "")
 #foldchange = Flat$fc
 #foldchange2 = lapply(foldchange, log2)
 
@@ -18,6 +18,7 @@ Spher = read.table("C:/Users/Simon/Downloads/Simon.shape.comparison.Sphericity.t
 Flat$padj = p.adjust(Flat$p, method = "fdr", n = length(Flat$p))
 Elong$padj = p.adjust(Elong$p, method = "fdr", n = length(Elong$p))
 Spher$padj = p.adjust(Spher$p, method = "fdr", n = length(Spher$p))
+
 #ggplot(data = Flat, aes(x = log2(fc.), y = -log10(p.))) +
 #  geom_point()
 # Add threshold lines
@@ -29,12 +30,20 @@ theme_set(theme_classic(base_size = 20) +
             ))
 
 # Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)<br /><br /><br />
+Elong$diffexpressed <- "NO"
+Flat$diffexpressed <- "NO"
 Spher$diffexpressed <- "NO"
-# if log2Foldchange > 0.6 and pvalue < 0.05, set as "UP"<br /><br /><br />
-Spher$diffexpressed[log2(Spher$fc) > 0.6 & -log10(Spher$p) > 0.2] <- "UP"
+# if log2Foldchange > 0.6 and pvalue < 0.05
+Elong$diffexpressed[log2(Elong$fc) > 0.0 & -log10(Elong$p) > 1.3] <- "UP"
+Flat$diffexpressed[log2(Flat$fc) > 0.0 & -log10(Flat$p) > 1.3] <- "UP"
+Spher$diffexpressed[log2(Spher$fc) > 0.0 & -log10(Spher$p) > 1.3] <- "UP"
 # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"<br /><br /><br />
-Spher$diffexpressed[log2(Spher$fc) < -0.6 & -log10(Spher$p) > 0.2] <- "DOWN"
+Elong$diffexpressed[log2(Elong$fc) < -0.0 & -log10(Elong$p) > 1.3] <- "DOWN"
+Flat$diffexpressed[log2(Flat$fc) < -0.0 & -log10(Flat$p) > 1.3] <- "DOWN"
+Spher$diffexpressed[log2(Spher$fc) < -0.0 & -log10(Spher$p) > 1.3] <- "DOWN"
 #<p># Explore a bit<br /><br /><br />
+head(Elong[order(Elong$padj) & Elong$diffexpressed == 'DOWN', ])
+head(Flat[order(Flat$padj) & Flat$diffexpressed == 'DOWN', ])
 head(Spher[order(Spher$padj) & Spher$diffexpressed == 'DOWN', ])
 
 # Create a new column "delabel" to de, that will contain the name of the top 30 differentially expressed genes (NA in case they are not)
@@ -43,8 +52,8 @@ Elong$delabel <- ifelse(Elong$gene %in% head(Elong[order(Elong$padj), "gene"], 3
 Spher$delabel <- ifelse(Spher$gene %in% head(Spher[order(Spher$padj), "gene"], 30), Spher$gene, NA)
 
 ggplot(data = Spher, aes(x = log2(fc), y = -log10(p), col = diffexpressed, label = delabel)) +
-  geom_vline(xintercept = c(-0.6, 0.6), col = "gray", linetype = 'dashed') +
-  geom_hline(yintercept = 0.2, col = "gray", linetype = 'dashed') + 
+  geom_vline(xintercept = c(-0.0, 0.0), col = "gray", linetype = 'dashed') +
+  geom_hline(yintercept = 1.3, col = "gray", linetype = 'dashed') + 
   geom_point(size = 2) + 
   scale_color_manual(values = c("#00AFBB", "grey", "#bb0c00"), # to set the colours of our variable  
                      labels = c("Downregulated", "Not significant", "Upregulated")) + # to set the labels in case we want to overwrite the categories from the dataframe (UP, DOWN, NO)
@@ -58,37 +67,48 @@ ggplot(data = Spher, aes(x = log2(fc), y = -log10(p), col = diffexpressed, label
 
 #GSEA
 
-gmt_file <-GSA.read.gmt(paste("C:/Users/Simon/Downloads/",
-                              "h.all.v2023.2.Hs.symbols.gmt",
-                              sep = "/"))
-gmt_file2 <-GSA.read.gmt(paste("C:/Users/Simon/Downloads/",
-                              "h.all.v2023.2.Hs.entrez.gmt",
-                              sep = "/"))
+
 
 library(clusterProfiler)
 
  
 
 # Convert data frame to a named vector 
-
-geneListFlat <- setNames(Flat$fc, Flat$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
+#Spher$diffexpressed[log2(Spher$fc) < -0.0 & -log10(Spher$p) > 1.3] <- "DOWN"
+#[-log10(Flat$p) > 1.3]
+#geneListFlat %>% 
+#  filter(p >= 0,05)
+#Flat_treshhold <- Flat$p > 0.05
+Flat_treshhold <- Flat %>% 
+  filter(-log10(p) > 1.3)
+Flat_Up <- Flat_treshhold %>% 
+  filter(diffexpressed == "DOWN")
+Elong_treshhold <- Elong %>% 
+  filter(-log10(p) > 1.3)
+Elong_Up <- Elong_treshhold %>% 
+  filter(diffexpressed == "DOWN")
+Spher_treshhold <- Spher %>% 
+  filter(-log10(p) > 1.3)
+Spher_Up <- Spher_treshhold %>% 
+  filter(diffexpressed == "DOWN")
+geneListFlat <- setNames(Flat_Up$fc, Flat_Up$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
 
 # Sort geneList in decreasing order  
 geneListFlat <- sort(geneListFlat, decreasing = TRUE)
 
-geneListElong <- setNames(Elong$fc, Elong$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
+geneListElong <- setNames(Elong_Up$fc, Elong_Up$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
 
 # Sort geneList in decreasing order  
 geneListElong <- sort(geneListElong, decreasing = TRUE)
 
-geneListSpher <- setNames(Spher$fc, Spher$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
+geneListSpher <- setNames(Spher_treshhold$fc, Spher_treshhold$gene)  #geneList + runif(length(geneList), min=-1e-6, max=1e-6)  
 
 # Sort geneList in decreasing order  
 geneListSpher <- sort(geneListSpher, decreasing = TRUE)
 
 #########################################################################################
 
-all_gene_sets = msigdbr::msigdbr(species = "Homo sapiens", category= 'H')
+all_gene_sets = msigdbr::msigdbr(species = "Homo sapiens", category= 'C2', subcategory ='CP:KEGG' )
 
 msigdbr_t2g = all_gene_sets  %>%  dplyr::distinct(gs_name, gene_symbol) %>% as.data.frame()
 
@@ -102,3 +122,9 @@ resultsFlat %>% as_tibble() -> hallmark_resultsFlat
 resultsElong %>% as_tibble() -> hallmark_resultsElong
 resultsSpher %>% as_tibble() -> hallmark_resultsSpher
 
+dotplot(resultsFlat)
+cnetplot(resultsFlat)
+dotplot(resultsElong)
+cnetplot(resultsElong)
+dotplot(resultsSpher)
+cnetplot(resultsSpher)
